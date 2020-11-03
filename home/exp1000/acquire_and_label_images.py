@@ -10,6 +10,7 @@ import time
 import datetime
 import json
 import operator
+from pathlib import Path
 
 __author__ = 'Georges Labreche, Georges.Labreche@esa.int'
 
@@ -157,9 +158,19 @@ def main(startTime, logger, logfile):
                 if len(png_files) != 1:
                     logger.error("Failed to acquire an image from the camera.")
                     skip = True
+                    
                 else:
                     file_png = png_files[0]
-                    logger.info("Acquired image: " + file_png)
+                    
+                    # Sometimes an error can result in an empty image file.
+                    # Make sure this is not the case.
+                    if Path(file_png).stat().st_size > 0:
+                        logger.info("Acquired image: " + file_png)
+
+                    else:
+                        # Empty image file acquired. Log error and skip image classification.
+                        logger.error("Image acquired from the camera is an empty file (0 KB).")
+                        skip = True
             
             # If we have successfully acquired a png file then proceed with creating the jpeg thumbnail.
             if not skip:
@@ -193,6 +204,11 @@ def main(startTime, logger, logfile):
                     logger.error("Failed to generate a thumbnail.")
                     skip = True
 
+                # Sometimes an error can result in an empty image file.
+                if Path(file_thumbnail).stat().st_size == 0:
+                    logger.error("Generated thumbnail is an empty file (0 KB).")
+                    skip = True
+
             # If we have successfully created a jpeg thumbnail file then create the jpeg input file for the image classification program.
             if not skip:
 
@@ -218,6 +234,11 @@ def main(startTime, logger, logfile):
                             X=input_width,
                             Y=input_height))
 
+                    skip = True
+
+                # Sometimes an error can result in an empty image file.
+                if Path(file_image_input).stat().st_size == 0:
+                    logger.error("Generated input image is an empty file (0 KB).")
                     skip = True
 
             # If we have successfully create the input images then feed it into the iamge classification program.
@@ -317,8 +338,7 @@ def main(startTime, logger, logfile):
 
                         except:
                             # Log the exception.
-                            logger.error("Failed to load predictions json: " + predictions)
-                            logger.exception("message")
+                            logger.exception("Failed to load predictions json '" + predictions + "':")
 
                     else: 
                         # Log error code if image classification program returned and error code.
@@ -326,36 +346,75 @@ def main(startTime, logger, logfile):
 
         except:
             # In case of exception just log the stack trace and proceed to the next image acquisition iteration.
-            logger.exception("message")
+            logger.exception("Failed to acquire and classify image:")
 
-        # Wait the configured sleep time before proceeding to the next image acquisition and labeling.
-        logger.info("Wait {T} seconds...".format(T=gen_interval))
-        time.sleep(gen_interval)
-        
-        # Increment image acquisition labeling counter.
-        counter = counter + 1
+        # Error handling here to not risk an unlikely infinite loop.
+        try:
 
-        # Keep looping until the target iteration count is reached.
-        if counter >= gen_number:
+            # Wait the configured sleep time before proceeding to the next image acquisition and labeling.
+            logger.info("Wait {T} seconds...".format(T=gen_interval))
+            time.sleep(gen_interval)
+            
+            # Increment image acquisition labeling counter.
+            counter = counter + 1
+
+            # Keep looping until the target iteration count is reached.
+            if counter >= gen_number:
+                done = True
+            else:
+                done = False
+
+        except:
+            # An unlikely exception is preventing the loop counter to increment.
+            # Log the exception and exit the loop.
+            logger.exception("An unlikely failure occured while waiting for the next image acquisition:")
             done = True
-        else:
-            done = False
 
     # We have exited the image acquisition loop.
     # This means that we have finished acquiring images. 
     # It's time to tar the thumbnail images and the log file for downlinking.
+    try:
 
-    # Don't include the log files if we don't want to.
-    if not log_keep:
-        os.system('rm {L}/*.log'.format(L=log_path))
+        # Don't include the log files if we don't want to.
+        if not log_keep:
+            os.system('rm {L}/*.log'.format(L=log_path))
 
-    # Use tar to package thumbnails and log files into the filestore's toGround folder.
-    os.system('tar -czf {FSG}/opssat_hdcam_exp{expID}_{D}.tar.gz {G}/**/*.jpeg {L}/*.log --remove-files'.format(\
-        FSG=filstore_toGroud,\
-        expID=exp_id,\
-        D=start_time.strftime("%Y%m%d_%H%M%S"),\
-        G=toGround_path,\
-        L=log_path))
+        # Count how many thumbnails images were kept and moved to the experiment's toGround folder.
+        thumbnail_count = len(list(Path(toGround_path).rglob('*.jpeg')))
+        
+        # Tar thumbnail(s) for downlink if at least 1 thumbnail was classified with a label of interest.
+        if thumbnail_count > 0:
+
+            # Log that we are tarring some thumbnails.
+            logger.info("Tarring {T} thumbnail(s) labelled for downlink.".format(T=thumbnail_count))
+
+            # Use tar to package thumbnails and log files into the filestore's toGround folder.
+            os.system('tar -czf {FSG}/opssat_hdcam_exp{expID}_{D}.tar.gz {G}/**/*.jpeg {L}/*.log --remove-files'.format(\
+                FSG=filstore_toGroud,\
+                expID=exp_id,\
+                D=start_time.strftime("%Y%m%d_%H%M%S"),\
+                G=toGround_path,\
+                L=log_path))
+
+        else:
+            # Log that no thumbnails were kept.
+            logger.info("No thumbnails kept for downlink.")
+
+    except:
+        # In case this happens, the thumbnails will be tarred at the end of the next experiment's run unless explicitely deleted.
+        logger.exception("Failed to tar kept thumbnails for downlink (if any):")
+
+    # Finally, log some housekeeping data.
+    
+    # Contents of the experiment's toGround folder
+    toGround_listing = subprocess.check_output(['ls', '-larth', toGround_path]).decode('utf-8')
+    logger.info('Contents of {G}:'.format(G=toGround_path))
+    logger.info(toGround_listing) 
+
+    # Disk usage.
+    df_output = subprocess.check_output(['df', '-h']).decode('utf-8')
+    logger.info('Disk usage:')
+    logger.info(df_output) 
 
 
 def setup_logger(name, log_file, formatter, level=logging.INFO):
