@@ -162,7 +162,7 @@ def main(startTime, logger, logfile):
                 else:
                     file_png = png_files[0]
                     
-                    # Sometimes an error can result in an empty image file.
+                    # An error in running the ims100_test_app command could result in an empty image file.
                     # Make sure this is not the case.
                     if Path(file_png).stat().st_size > 0:
                         logger.info("Acquired image: " + file_png)
@@ -204,7 +204,7 @@ def main(startTime, logger, logfile):
                     logger.error("Failed to generate a thumbnail.")
                     skip = True
 
-                # Sometimes an error can result in an empty image file.
+                # An error in executing the pngtopan, pamscale, or pnmtpjpeg commands can produce an empty thumbnail file.
                 if Path(file_thumbnail).stat().st_size == 0:
                     logger.error("Generated thumbnail is an empty file (0 KB).")
                     skip = True
@@ -236,9 +236,9 @@ def main(startTime, logger, logfile):
 
                     skip = True
 
-                # Sometimes an error can result in an empty image file.
+                # An error in executing the pamscale command can produce an empty image input file.
                 if Path(file_image_input).stat().st_size == 0:
-                    logger.error("Generated input image is an empty file (0 KB).")
+                    logger.error("Generated image input is an empty file (0 KB).")
                     skip = True
 
             # If we have successfully create the input images then feed it into the iamge classification program.
