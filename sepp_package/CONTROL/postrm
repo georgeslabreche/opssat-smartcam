@@ -1,0 +1,2 @@
+#!/bin/sh
+userdel -r -f exp1000

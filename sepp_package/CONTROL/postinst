@@ -1,0 +1,4 @@
+#!/bin/sh
+chown -R exp1000:exp1000 /home/exp1000
+chmod -R 770 /home/exp1000
+echo "Installation finished."

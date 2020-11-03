@@ -1,0 +1,3 @@
+#!/bin/sh
+/home/exp1000/stop_exp1000.sh
+exit 0

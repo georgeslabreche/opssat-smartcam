@@ -1,0 +1,3 @@
+#!/bin/sh
+useradd exp1000 -m -d /home/exp1000 -s /bin/sh
+passwd -l exp1000

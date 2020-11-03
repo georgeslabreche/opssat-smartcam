@@ -1,0 +1,7 @@
+Package: exp1000
+Priority: optional
+Maintainer: esoc
+Architecture: sepp
+Section: Applications
+Version: 1.0
+Description: hdcam image acquisition and artificial intelligence classification

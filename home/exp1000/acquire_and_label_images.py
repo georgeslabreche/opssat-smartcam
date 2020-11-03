@@ -21,7 +21,7 @@ exp_id = 1000
 base_path = '/home/root/georges/apps/SmartCamLuvsU/home/exp' + str(exp_id) if platform.node() == 'sepp' else '/home/georges/dev/SmartCamLuvsU/home/exp' + str(exp_id) 
 
 # The experiment's config file path.
-config_file = base_path + '/config.sepp.ini' if platform.node() == 'sepp' else 'config.dev.ini'
+config_file = base_path + '/config.ini' if platform.node() == 'sepp' else 'config.dev.ini'
 
 # The experiment's log folder path.
 log_path = base_path + '/logs'
