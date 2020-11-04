@@ -296,7 +296,7 @@ def main(startTime, logger, logfile):
                         
                         else:
                             # Log highest confidence prediction.
-                            logger.info("labeling the image as '" + label + "'.")
+                            logger.info("Labeling the image as '" + label + "'.")
 
                             # Check if the classified image should be ditched or kept based on what is set in the config.ini file.
                             if label not in labels_keep:
