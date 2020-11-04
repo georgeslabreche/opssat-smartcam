@@ -2,8 +2,8 @@
 An image acquisition and classification app for the European Space Agency's [OPS-SAT](https://www.esa.int/Enabling_Support/Operations/OPS-SAT_your_flying_laboratory) spacecraft.
 
 
-## Social Neural Networks
-The app can use any neural network model files trained with TensorFlow. The default model classifies images acquired by the spacecraft's camera as either "earth", "edge", or "bad". 
+## Neural Networks
+The app can apply any .tflite neural network image classification model file trained with TensorFlow. The default model labels the images acquired by the spacecraft's camera as either "earth", "edge", or "bad". 
 
 ## How does it work?
 The desired app configurations are set in the config.ini file. Starting the app triggers the following sequence of operations:
