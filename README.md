@@ -32,7 +32,7 @@ downlink_log_if_no_images - flag if the log file(s) should be downlinked even if
 - confidence_threshold - minimum confidence level required to apply the label predicted by the neural network model.
 
 ### Image Acquisition
--  - image acquisitions period in seconds.
+- image acquisitions period in seconds.
 - gen_number - number of image acquisition interations.
 - gen_exposure - camera exposure value.
 - gen_gains - rgb gains.
