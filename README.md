@@ -19,27 +19,27 @@ The desired app configurations are set in the config.ini file. Starting the app 
 Consult the app's config.ini file for the default configuration values,
 
 ### General
-downlink_log_if_no_images - flag if the log file(s) should be downlinked even if no images are labeled for downlink.
+- *downlink_log_if_no_images* - flag if the log file(s) should be downlinked even if no images are labeled for downlink.
 
 ### Model
-- tflite_model - path of the TensorFlow Lite neural network mode file.
-- path of the labels text file.
-- labels_keep - only downlink images that are classified with these labels.
-- input_height - scaled height of the image input that will be fed into the neural network.
-- input_width - scaled width of the image input that will be fed into the neural network. 
-- input_mean - mean of the image input.
-- input_std - standard deviation of the image input.
-- confidence_threshold - minimum confidence level required to apply the label predicted by the neural network model.
+- *tflite_model* - path of the TensorFlow Lite neural network mode file.
+- *labels* - path of the labels text file.
+- *labels_keep* - only downlink images that are classified with these labels.
+- *input_height* - scaled height of the image input that will be fed into the neural network.
+- *input_width* - scaled width of the image input that will be fed into the neural network. 
+- *input_mean* - mean of the image input.
+- *input_std* - standard deviation of the image input.
+- *confidence_threshold* - minimum confidence level required to apply the label predicted by the neural network model.
 
 ### Image Acquisition
-- image acquisitions period in seconds.
-- gen_number - number of image acquisition interations.
-- gen_exposure - camera exposure value.
-- gen_gains - rgb gains.
+- *image* acquisitions period in seconds.
+- *gen_number* - number of image acquisition interations.
+- *gen_exposure* - camera exposure value.
+- *gen_gains* - rgb gains.
 
 ### Images
-- raw_keep - flag if the raw image file should be kept.
-- png_keep - flag if the png image file should be kept.
-- jpeg_scaling - scaling factor applied on the png file when generating the jpeg thumbnail.
-- jpeg_quality - png to jpeg conversion quality level.
-- jpeg_processing - image processing to apply when generating jpeg thumbnail (none, pnmnorm, or pnmhisteq).
+- *raw_keep* - flag if the raw image file should be kept.
+- *png_keep* - flag if the png image file should be kept.
+- *jpeg_scaling* - scaling factor applied on the png file when generating the jpeg thumbnail.
+- *jpeg_quality* - png to jpeg conversion quality level.
+- *jpeg_processing* - image processing to apply when generating jpeg thumbnail (none, pnmnorm, or pnmhisteq).
