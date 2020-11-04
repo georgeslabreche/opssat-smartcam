@@ -32,7 +32,7 @@ Consult the app's config.ini file for the default configuration values,
 - *confidence_threshold* - minimum confidence level required to apply the label predicted by the neural network model.
 
 ### Image Acquisition
-- *image* acquisitions period in seconds.
+- *gen_interval* - image acquisitions period in seconds.
 - *gen_number* - number of image acquisition interations.
 - *gen_exposure* - camera exposure value.
 - *gen_gains* - rgb gains.
