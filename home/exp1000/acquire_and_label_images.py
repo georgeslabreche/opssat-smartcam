@@ -68,18 +68,11 @@ def main(startTime, logger, logfile):
     config = configparser.ConfigParser()
     config.read(config_file)
 
-    # Determine if this is a dry run or not
+    # Flag if logs should be downlinked even if no images are classified to be kept.
     downlink_log_if_no_images = config.getboolean('conf', 'downlink_log_if_no_images')
-
-    # Fetch model config values.
-    tflite_model = config.get('model', 'tflite_model')
-    file_labels = config.get('model', 'labels')
-    labels_keep = json.loads(config.get('model', 'labels_keep'))
-    input_height = config.get('model', 'input_height')
-    input_width = config.get('model', 'input_width')
-    input_mean = config.get('model', 'input_mean')
-    input_std = config.get('model', 'input_std')
-    confidence_threshold = config.get('model', 'confidence_threshold')
+    
+    # The first model to apply.
+    next_model = config.get('conf', 'entry_point_model')
 
     # Fetch image acquisition parameters.
     gen_interval = config.getint('gen', 'gen_interval')
@@ -111,7 +104,7 @@ def main(startTime, logger, logfile):
     if jpeg_scaling >= 1.0 or jpeg_scaling <= 0:
         jpeg_scaling = 0.5  
 
-    jpeg_quality  = config.getint('jpeg', 'jpeg_quality')
+    jpeg_quality = config.getint('jpeg', 'jpeg_quality')
     if jpeg_quality >= 100 or jpeg_quality <= 0:
         jpeg_quality = 90
 
@@ -119,13 +112,14 @@ def main(startTime, logger, logfile):
     if jpeg_processing != 'pnmnorm' and jpeg_processing != 'pnmhisteq':
         jpeg_processing = 'none'
 
-    # Flag and counter to keep track
+    # Flag and counter to keep track.
     done = False
     counter = 0
 
     while not done:
         try:
 
+            # Flag indicating if we should skip the image acquisition and labeling process in case of an encountered error.
             skip = False
 
             # Cleanup any files that may have been left over from a previous run that may have terminated ungracefully.
@@ -207,149 +201,224 @@ def main(startTime, logger, logfile):
                     logger.error("Generated thumbnail is an empty file (0 KB).")
                     skip = True
 
-            # If we have successfully created a jpeg thumbnail file then create the jpeg input file for the image classification program.
+            # Proceed if we have successfully create the thumbnail image.
             if not skip:
 
-                # File name of the image file that will be used as the input image to feed the image classification model.
-                file_image_input = file_thumbnail.replace("_thumbnail.jpeg", "_input.jpeg")
+                # By default, assume the image that will be classified will not be kept.
+                keep_image = False
 
-                # Build the command string to create the image input for the image classification program.
-                # FIXME create input jpeg directly from the thumbnail jpeg instead of from the png. Maye require an ipk to install jpegtopnm.
-                if jpeg_processing != 'none':
-                    cmd_create_input_image = 'pngtopam {F} | pamscale -xsize {X} -ysize {Y} | {P} | pnmtojpeg -quality {Q} > {O}'.format(\
-                        F=file_png,\
-                        X=input_width,\
-                        Y=input_height,\
-                        P=jpeg_processing,\
-                        Q=jpeg_quality,\
-                        O=file_image_input)
+                # Keep applying follow up models to the kept image as long as images are labeled to be kept and follow up models are defined.
+                while next_model is not None:
 
-                else:
-                    cmd_create_input_image = 'pngtopam {F} | pamscale -xsize {X} -ysize {Y} | pnmtojpeg -quality {Q} > {O}'.format(\
-                        F=file_png,\
-                        X=input_width,\
-                        Y=input_height,\
-                        Q=jpeg_quality,\
-                        O=file_image_input)
+                    # Get the config section name for the current model.
+                    model_cfg_section_name = 'model_' + next_model
 
-                # Log the command that will be executed.
-                logger.info("Running command to create input: {C}".format(C=cmd_create_input_image))
+                    # Check that the model section exists in the configuration file before proceeding.
+                    if config.has_section(model_cfg_section_name) is False:
+                        logger.error("Skipping the '{M}' model: it is not defined in the config.ini file.".format(M=next_model))
+                        break
 
-                # Run the command to create the image input file for the image classification program.
-                os.system(cmd_create_input_image)
+                    else:
+                        # Logging which model in the pipeline is being used to classify the image
+                        logger.info("Labeling the image using the '{M}' model.".format(M=next_model))
 
-                # Check that the image input exists.
-                if not os.path.isfile(file_image_input):
-                    logger.error(\
-                        "Failed to generate {X}x{Y} image input for the image classification model.".format(\
-                            X=input_width,
-                            Y=input_height))
+                    # Fetch the current model's config values.
+                    tflite_model = config.get(model_cfg_section_name, 'tflite_model')
+                    file_labels = config.get(model_cfg_section_name, 'labels')
+                    labels_keep = json.loads(config.get(model_cfg_section_name, 'labels_keep'))
+                    input_height = config.get(model_cfg_section_name, 'input_height')
+                    input_width = config.get(model_cfg_section_name, 'input_width')
+                    input_mean = config.get(model_cfg_section_name, 'input_mean')
+                    input_std = config.get(model_cfg_section_name, 'input_std')
+                    confidence_threshold = config.get(model_cfg_section_name, 'confidence_threshold')
 
-                    skip = True
+                    # File name of the image file that will be used as the input image to feed the image classification model.
+                    file_image_input = file_thumbnail.replace("_thumbnail.jpeg", "_input.jpeg")
 
-                # An error in executing the pamscale command can produce an empty image input file.
-                if Path(file_image_input).stat().st_size == 0:
-                    logger.error("Generated image input is an empty file (0 KB).")
-                    skip = True
+                    # Build the command string to create the image input for the image classification program.
+                    # FIXME create input jpeg directly from the thumbnail jpeg instead of from the png. Maye require an ipk to install jpegtopnm.
+                    if jpeg_processing != 'none':
+                        cmd_create_input_image = 'pngtopam {F} | pamscale -xsize {X} -ysize {Y} | {P} | pnmtojpeg -quality {Q} > {O}'.format(\
+                            F=file_png,\
+                            X=input_width,\
+                            Y=input_height,\
+                            P=jpeg_processing,\
+                            Q=jpeg_quality,\
+                            O=file_image_input)
 
-            # If we have successfully create the input images then feed it into the image classification program.
-            if not skip:
+                    else:
+                        cmd_create_input_image = 'pngtopam {F} | pamscale -xsize {X} -ysize {Y} | pnmtojpeg -quality {Q} > {O}'.format(\
+                            F=file_png,\
+                            X=input_width,\
+                            Y=input_height,\
+                            Q=jpeg_quality,\
+                            O=file_image_input)
 
-                # Build the image labeling command.
-                cmd_label_image = '{P} {I} {M} {L} {height} {width} {mean} {std}'.format(\
-                    P=program_path,\
-                    I=file_image_input,\
-                    M=tflite_model,\
-                    L=file_labels,\
-                    height=input_height,\
-                    width=input_width,\
-                    mean=input_mean,\
-                    std=input_std)
+                    # Log the command that will be executed.
+                    logger.info("Running command to create input: {C}".format(C=cmd_create_input_image))
 
-                # Log the command that will be executed.
-                logger.info("Running command to label the image: {C}".format(C=cmd_label_image))
+                    # Run the command to create the image input file for the image classification program.
+                    os.system(cmd_create_input_image)
 
-                # Create a subprocess to execute the image classification program.
-                process = subprocess.Popen(cmd_label_image, stdout=subprocess.PIPE, shell=True)
+                    # Check that the image input exists.
+                    if not os.path.isfile(file_image_input):
+                        logger.error(\
+                            "Failed to generate {X}x{Y} image input for the image classification model.".format(\
+                                X=input_width,
+                                Y=input_height))
 
-                # Get program stdout.
-                predictions = (process.communicate()[0]).decode("utf-8")
+                        skip = True
 
-                # Get program return code.
-                return_code = process.returncode
+                    # An error in executing the pamscale command can produce an empty image input file.
+                    if Path(file_image_input).stat().st_size == 0:
+                        logger.error("Generated image input is an empty file (0 KB).")
+                        skip = True
 
-                # Fetch image classification result if the image classification program doesn't return an error code.
-                if return_code == 0:
-                    try:
-                        # The program's stdout is prediction result as a JSON object string.
-                        predictions_dict = json.loads(predictions)
+                    # Input image for the model was successfully created, proceed with running the image classification program.
+                    if not skip:
 
-                        # Log results.
-                        logger.info("Model prediction results: " + predictions)
+                        # Build the image labeling command.
+                        cmd_label_image = '{P} {I} {M} {L} {height} {width} {mean} {std}'.format(\
+                            P=program_path,\
+                            I=file_image_input,\
+                            M=tflite_model,\
+                            L=file_labels,\
+                            height=input_height,\
+                            width=input_width,\
+                            mean=input_mean,\
+                            std=input_std)
 
-                        # Get label with highest prediction confidence.
-                        label = max(predictions_dict.items(), key=operator.itemgetter(1))[0]
-                        
-                        # If the image classification is not greater or equal to a certain threshold then discard it.
-                        if float(predictions_dict[label]) < float(confidence_threshold):
-                            logger.info("Insufficient prediction confidence level to label the image (the threshold is currently set to " + confidence_threshold + ").")
-                        
-                        else:
-                            # Log highest confidence prediction.
-                            logger.info("Labeling the image as '" + label + "'.")
+                        # Log the command that will be executed.
+                        logger.info("Running command to label the image: {C}".format(C=cmd_label_image))
 
-                            # Check if the classified image should be ditched or kept based on what is set in the config.ini file.
-                            if label not in labels_keep:
-                                # Images will be removed further down.
-                                # For now just log that they will not be kept.
-                                logger.info("Ditching the image.")
+                        # Create a subprocess to execute the image classification program.
+                        process = subprocess.Popen(cmd_label_image, stdout=subprocess.PIPE, shell=True)
 
-                            else:
-                                # This image has been classified with a label of interest.
-                                # Keep the image but only the types as per what is configured in the the config.ini file.
-                                logger.info("Keeping the image.")
+                        # Get program stdout.
+                        predictions = (process.communicate()[0]).decode("utf-8")
+
+                        # Get program return code.
+                        return_code = process.returncode
+
+                        # Fetch image classification result if the image classification program doesn't return an error code.
+                        if return_code == 0:
+                            try:
+                                # The program's stdout is prediction result as a JSON object string.
+                                predictions_dict = json.loads(predictions)
+
+                                # Log results.
+                                logger.info("Model prediction results: " + predictions)
+
+                                # Get label with highest prediction confidence.
+                                label = max(predictions_dict.items(), key=operator.itemgetter(1))[0]
                                 
-                                # Remove the raw image file if it is not flagged to be kept.
-                                if not raw_keep:
-                                    # FIXME: Consider using os.remove(file_raw). Would have to set file_raw first.
-                                    cmd_remove_raw_image = 'rm ' + base_path + '/*.ims_rgb'
-                                    os.system(cmd_remove_raw_image)
-
-                                # Remove the png image file if it is not flagged to be kept.
-                                if not png_keep:
-                                    # FIXME: Consider using os.remove(file_png). The file_png variable already exists.
-                                    cmd_remove_png_image = 'rm ' + base_path + '/*.png'
-                                    os.system(cmd_remove_png_image)
-
-                                # Remove the jpeg image that as used as an input for the image classification program.
-                                # FIXME: Consider using os.remove(file_image_input). The file_image_input variable already exists.
-                                cmd_remove_input_image = 'rm ' + base_path + '/*_input.jpeg'
-                                os.system(cmd_remove_input_image)
-
-                                # Create a label directory in the experiment's toGround directory.
-                                # This is where the images will be moved to and how we categorize images based on their predicted labels.
-                                toGround_label_dir = toGround_path + '/' + label
-                                if not os.path.exists(toGround_label_dir):
-                                    os.makedirs(toGround_label_dir)
+                                # If the image classification is not greater or equal to a certain threshold then discard it.
+                                if float(predictions_dict[label]) < float(confidence_threshold):
+                                    logger.info("Insufficient prediction confidence level to label the image (the threshold is currently set to " + confidence_threshold + ").")
                                 
-                                # Create the command to move the images to the experiment's toGround's label folder
-                                cmd_move_images = 'mv *.png *.ims_rgb *_thumbnail.jpeg {G}/'.format(G=toGround_label_dir)
+                                else:
+                                    # Log highest confidence prediction.
+                                    logger.info("Labeling the image as '" + label + "'.")
 
-                                # Move the image to the experiment's toGround folder.
-                                os.system(cmd_move_images)
+                                    # Check if the labeled image should be ditched or kept based on what is set in the config.ini file.
+                                    for lbl_k in labels_keep:
 
-                        # Remove all images that have been leftover in the experiment's root directory.
-                        # This should only matter for an image that was not labeled as an image of interest,
-                        # in which case we are removing all images created during the image classification process.
-                        remove_images(logger)
+                                        # The label value can be a pair of values represented as a colon seperated string.
+                                        #
+                                        # If it is a pair:
+                                        #   - the first value represents which labelled image to keep.
+                                        #   - the second value represent the follow up model to apply to the kept image.
+                                        #
+                                        # If it is not a pair then the value only represents which labeled image to keep. There is no follow-up model.
+                                        label_split = lbl_k.split(':')
 
-                    except:
-                        # Log the exception.
-                        logger.exception("Failed to load predictions json '" + predictions + "':")
+                                        # If the label is marked for keeping
+                                        if label_split[0] in labels_keep:
 
-                else: 
-                    # Log error code if image classification program returned and error code.
-                    logger.error("The image classification program returned error code " + str(return_code))
+                                            # Flag that the image is to be kept.
+                                            keep_image = True
+
+                                            # Determine if there is a follow up model to apply to this image.
+                                            if len(label_split) == 1:
+                                                # No follow up model to apply after this current model.
+                                                next_model = None
+
+                                            elif len(label_split) == 2:
+                                                # There is a follow up model to apply after this current model.
+                                                next_model = label_split[1]
+
+                                            else:
+                                                # Multiple follw up models were defined.
+                                                # Log a warning that this is not ssupported.
+                                                # TODO: Support this case of "model branching". Look into approaching this with a node graph.
+                                                logging.warning("Branching to multiple follow up models is currently unsupported. Selecting the first next model listed.")
+
+                                                # Only follow up with the first follow up model that is listed.
+                                                next_model = label_split[1]
+
+                                            # Break out of the labels_keep checking loop now that we know that we are keeping the image based on the label applied to it.
+                                            break
+
+                                    # We have finished checking if the image should be kept based on the label applied to it by the current model.
+                                    # If we are not keeping the image then delete the image files and exit the model pipeline loop.
+                                    if not keep_image:
+                                        # Log image removal.
+                                        logger.info("Ditching the image.")
+
+                                        # Remove image.
+                                        remove_images(logger)
+
+                                        # Terminate the model pipeline loop.
+                                        # Applying the current model resulted in the image being discarded.
+                                        # There is no image to input to the following models in the pipeline. 
+                                        next_model = None
+
+                            except:
+                                # Log the exception.
+                                logger.exception("Failed to load predictions json '" + predictions + "':")
+
+                        else: 
+                            # Log error code if image classification program returned and error code.
+                            logger.error("The mage classification program returned error code {E}.".format(E=str(return_code)))
+
+                # We have exited the model pipeline loop.
+                # Proceed to moving the image to the experiment's toGround folder if we have gone through all 
+                # the models in the pipeline and still have an image that is labeled to keep for downlinking.
+                if keep_image:
+
+                    # The current image has been classified with a label of interest.
+                    # Keep the image but only the types as per what is configured in the the config.ini file.
+                    logger.info("Keeping the image.")
+                    
+                    # Remove the raw image file if it is not flagged to be kept.
+                    if not raw_keep:
+                        # FIXME: Consider using os.remove(file_raw). Would have to set file_raw first.
+                        cmd_remove_raw_image = 'rm ' + base_path + '/*.ims_rgb'
+                        os.system(cmd_remove_raw_image)
+
+                    # Remove the png image file if it is not flagged to be kept.
+                    if not png_keep:
+                        # FIXME: Consider using os.remove(file_png). The file_png variable already exists.
+                        cmd_remove_png_image = 'rm ' + base_path + '/*.png'
+                        os.system(cmd_remove_png_image)
+
+                    # Remove the jpeg image that was used as an input for the image classification program.
+                    # FIXME: Consider using os.remove(file_image_input). The file_image_input variable already exists.
+                    cmd_remove_input_image = 'rm ' + base_path + '/*_input.jpeg'
+                    os.system(cmd_remove_input_image)
+
+                    # Create a label directory in the experiment's toGround directory.
+                    # This is where the images will be moved to and how we categorize images based on their predicted labels.
+                    toGround_label_dir = toGround_path + '/' + label
+                    if not os.path.exists(toGround_label_dir):
+                        os.makedirs(toGround_label_dir)
+                    
+                    # Create the command to move the images to the experiment's toGround's label folder
+                    cmd_move_images = 'mv *.png *.ims_rgb *_thumbnail.jpeg {G}/'.format(G=toGround_label_dir)
+
+                    # Move the image to the experiment's toGround folder.
+                    os.system(cmd_move_images)
+
 
         except:
             # In case of exception just log the stack trace and proceed to the next image acquisition iteration.
