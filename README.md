@@ -4,9 +4,12 @@ An image acquisition and classification app for the European Space Agency's [OPS
 ## Background
 The SmartCam app enables autonomous on-board decision making in downlink prioritization. It uses artificial intelligence (AI) to identify images of interest as soon as they are captured by the spacecraft's camera. During its commissioning phase, OPS-SAT downlinked over 4,5000 thumbnail images. These pictures were used as training data for [TensorFlow Lite](https://www.tensorflow.org/lite) to develop an image classification convolutional neural network (CNN) model. 
 
-TheTensorFlow Lite inference API is meant for machine learning (ML) models on mobile and IoT devices but OPS-SAT's powerful on-board computer makes it possible to run it in space. Since image classification is a common problem, the model trained for the SmartCam app benefitted from [transfer Learning (TL)](https://www.tensorflow.org/tutorials/images/transfer_learning) to greatly reduce the complexity, time, and processing power required to train the model.
+The TensorFlow Lite inference API is meant for machine learning (ML) models on mobile and IoT devices but OPS-SAT's powerful on-board computer makes it possible to run it in space. Since image classification is a common problem, the model trained for the SmartCam app benefitted from [transfer Learning (TL)](https://www.tensorflow.org/tutorials/images/transfer_learning) to greatly reduce the complexity, time, and processing power required to train the model.
 
 The app was developed with accessibility and re-useability in mind; anyone can uplink their own TensorFlow Lite image classification model for the SmartCam to use without having to develop their own app. A future version will allow multiple models to be chained into an image classification pipeline, with branching options, opening exciting possibilities for crowdsourced space segment AI operations.
+
+## Inference
+The SmartCam app is written in Python. The inference program it invokes is written in C and can be found [here](https://github.com/georgeslabreche/tensorflow-opssat-smartcam).
 
 ## Neural Networks
 The app can apply any .tflite neural network image classification model file trained with TensorFlow. The default model labels the images acquired by the spacecraft's camera as either "earth", "edge", or "bad". 
