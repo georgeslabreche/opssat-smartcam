@@ -2,7 +2,7 @@
 An image acquisition and classification app for the European Space Agency's [OPS-SAT](https://www.esa.int/Enabling_Support/Operations/OPS-SAT_your_flying_laboratory) spacecraft.
 
 ## Background
-The SmartCam app enables autonomous on-board decision making in downlink prioritization. It uses artificial intelligence (AI) to identify images of interest as soon as they are captured by the spacecraft's camera. During its commissioning phase, OPS-SAT downlinked over 4,5000 thumbnail images. These pictures were used as training data for [TensorFlow Lite](https://www.tensorflow.org/lite) to develop an image classification convolutional neural network (CNN) model. 
+The SmartCam app enables autonomous on-board decision making in downlink prioritization. It uses artificial intelligence (AI) to identify images of interest as soon as they are captured by the spacecraft's camera. During its commissioning phase, OPS-SAT downlinked over 4,500 thumbnail images. These pictures were used as training data for [TensorFlow Lite](https://www.tensorflow.org/lite) to develop an image classification convolutional neural network (CNN) model. 
 
 The TensorFlow Lite inference API is meant for machine learning (ML) models on mobile and IoT devices but OPS-SAT's powerful on-board computer makes it possible to run it in space. Since image classification is a common problem, the model trained for the SmartCam app benefitted from [transfer Learning (TL)](https://www.tensorflow.org/tutorials/images/transfer_learning) to greatly reduce the complexity, time, and processing power required to train the model.
 
