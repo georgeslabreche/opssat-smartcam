@@ -41,7 +41,7 @@ start_time = datetime.datetime.utcnow()
 log_path = base_path + '/logs'
 
 # The experiment's log file path.
-logfile =  log_path + '/opssat_smartcamluvsu_{D}.log'.format(D=start_time.strftime("%Y%m%d_%H%M%S"))
+logfile =  log_path + '/opssat_smartcam_{D}.log'.format(D=start_time.strftime("%Y%m%d_%H%M%S"))
 
 # The logger.
 logger = None
@@ -59,7 +59,7 @@ class AppConfig:
         # Init the gen config section properties.
         self.init_gen_props()
 
-        # Init the img confic section properties.
+        # Init the img config section properties.
         self.init_img_props()
 
 
@@ -71,6 +71,9 @@ class AppConfig:
 
         # The first model to apply.
         self.next_model = self.config.get('conf', 'entry_point_model')
+
+        # The compression to apply
+        self.compression = self.config.get('conf', 'compression')
 
 
     def init_model_props(self, model_name):
@@ -92,6 +95,28 @@ class AppConfig:
         self.input_mean = self.config.get(model_cfg_section_name, 'input_mean')
         self.input_std = self.config.get(model_cfg_section_name, 'input_std')
         self.confidence_threshold = self.config.get(model_cfg_section_name, 'confidence_threshold')
+
+        return True
+
+
+    def init_compression_fapec_props(self)
+        """Fetch fapec compression parameters."""
+
+         # Get the config section name for fapec compression.
+        fapec_cfg_section_name = 'compression_fapec'
+
+        # Check that the model section exists in the configuration file before proceeding.
+        if self.config.has_section(fapec_cfg_section_name) is False:
+            return False
+        
+        self.compression_fapec_chunk = self.config.getint(fapec_cfg_section_name, 'chunk')
+        self.compression_fapec_threads = self.config.getint(fapec_cfg_section_name, 'threads')
+        self.compression_fapec_dtype = self.config.getint(fapec_cfg_section_name, 'dtype')
+        self.compression_fapec_band = self.config.getint(fapec_cfg_section_name, 'band')
+        self.compression_fapec_losses = self.config.getint(fapec_cfg_section_name, 'losses')
+        self.compression_fapec_meaningful_bits = self.config.getint(fapec_cfg_section_name, 'meaningful_bits')
+        self.compression_fapec_lev = self.config.getint(fapec_cfg_section_name, 'lev')
+        self.compression_fapec_del = self.config.getint(fapec_cfg_section_name, 'del')
 
         return True
 
@@ -139,6 +164,48 @@ class AppConfig:
         self.jpeg_processing = self.config.get('jpeg', 'jpeg_processing')
         if self.jpeg_processing != 'pnmnorm' and self.jpeg_processing != 'pnmhisteq':
             self.jpeg_processing = 'none'
+
+class Fapec:
+
+    bin_path = '/home/exp100/fapec'
+    toGround_path = '/home/exp100/toGround'
+
+    def __init__(self, chunk, threads, dtype, band, losses, meaningful_bits, lev, del_src, logfile):
+        """Iniitialize the Fapec compression class."""
+
+        self.chunk = chunk
+        self.threads = threads
+        self.dtype = dtype
+        self.band = band
+        self.losses = losses
+        self.meaningful_bits = meaningful_bits
+        self.lev = lev
+        self.del_src = "-del" if del_src else '' 
+        self.logfile = logfile
+
+
+    def compress(self, src, dst):
+        """Compress the given file(s)."""
+
+        #TODO: Check if lev should not be included when set to 0.
+
+        # The fapec compression command with all parameters.
+        cmd_compress = '{BIN} q -chunk {C} -mt {T} -dtype {DT} -cillic 2048 1944 {B} {L} {MB} 4 {LEV} {DEL} -ow -o {DST} {SRC} >> {LOG} 2>&1'.format(\
+            BIN=self.bin_path,\
+            C=self.chunk,\
+            T=self.threads,\
+            DT=self.dtype,\
+            B=self.band,\
+            L=self.losses,\
+            MB=self.meaningful_bits,\
+            LEV='-lev ' + str(self.lev) if self.lev > 0 else '',\
+            DEL=self.del_src,\
+            SRC=src,\
+            DST=dst,\
+            LOG=self.logfile)
+
+        # Apply the compression.
+        os.system(cmd_compress)
 
 
 class Utils:
@@ -212,7 +279,7 @@ class Utils:
         return False, None
 
 
-    def move_images_for_keeping(self):
+    def move_images_for_keeping(self, applied_label):
 
         # Remove the raw image file if it is not flagged to be kept.
         if not cfg.raw_keep:
@@ -260,7 +327,7 @@ class Utils:
                 logger.info("Tarring {T} thumbnail(s) labeled for downlink.".format(T=thumbnail_count))
 
                 # Use tar to package thumbnails and log files into the filestore's toGround folder.
-                os.system('tar -czf {FSG}/opssat_smartcamluvsu_exp{expID}_{D}.tar.gz {G}/**/*.jpeg {L}/*.log --remove-files'.format(\
+                os.system('tar -czf {FSG}/opssat_smartcam_exp{expID}_{D}.tar.gz {G}/**/*.jpeg {L}/*.log --remove-files'.format(\
                     FSG=filestore_toGroud,\
                     expID=exp_id,\
                     D=start_time.strftime("%Y%m%d_%H%M%S"),\
@@ -273,7 +340,7 @@ class Utils:
                 logger.info("No thumbnail(s) kept but tarring logs for downlink.")
 
                 # Use tar to package log files into the filestore's toGround folder.
-                os.system('tar -czf {FSG}/opssat_smartcamluvsu_exp{expID}_{D}.tar.gz {L}/*.log --remove-files'.format(\
+                os.system('tar -czf {FSG}/opssat_smartcam_exp{expID}_{D}.tar.gz {L}/*.log --remove-files'.format(\
                     FSG=filestore_toGroud,\
                     expID=exp_id,\
                     D=start_time.strftime("%Y%m%d_%H%M%S"),\
@@ -498,6 +565,29 @@ def run_experiment():
     camera = HDCamera(cfg.gen_gains, cfg.gen_exposure, logfile)
     img_editor = ImageEditor()
     img_classifier = ImageClassifier()
+    
+    # Instanciate a compressor object if a compression algorithm was specified and configured in the config.ini.
+    raw_compressor = None
+
+    # Raw image file compression will also only be applied of the raw files are marked to be kept.
+    if cfg.raw_keep is True and cfg.compression == 'fapec' and cfg.init_compression_fapec_props() is True:
+
+        # Instanciate compression object that will be used to compress the raw image files.
+        raw_compressor = Fapec(self.compression_fapec_chunk,\
+            self.compression_fapec_threads,\
+            self.compression_fapec_dtype,\
+            self.compression_fapec_band,\
+            self.compression_fapec_losses,\
+            self.compression_fapec_meaningful_bits,\
+            self.compression_fapec_lev,\
+            self.compression_fapec_del,
+            logfile)
+
+        logger.info("Raw image file compression enabled: " + cfg.compression + ".")
+
+    else:
+        # No compression will be applied to the raw image files.
+        logger.info("Raw image file compression disabled.")
 
     # Flag and counter to keep track.
     done = False
@@ -602,7 +692,16 @@ def run_experiment():
                     logger.info("Keeping the image.")
                     
                     # Move the images for keeping.
-                    utils.move_images_for_keeping()
+                    # FIXME: Pass required variabled, e.g. cfg.
+                    utils.move_images_for_keeping(applied_label)
+
+                    # Compress raw images if configured to do so.
+                    if raw_compressor is not None:
+                        # TODO: Get raw image path.
+                        raw_image_file_path = 'TODO.ims_rgb'
+                        raw_compressor.compress(raw_image_file_path, raw_compressor.toGround_path)
+
+                    # Todo check for split and move to filestore toGround directory.
 
         except:
             # In case of exception just log the stack trace and proceed to the next image acquisition iteration.
@@ -627,7 +726,7 @@ def run_experiment():
         except:
             # An unlikely exception is preventing the loop counter to increment.
             # Log the exception and exit the loop.
-            logger.exception("An unlikely failure occured while waiting for the next image acquisition:")
+            logger.exception("An unlikely failure occured while waiting for the next image acquisition.")
             done = True
 
     # We have exited the image acquisition and labeling loop.
@@ -667,7 +766,7 @@ if __name__ == '__main__':
     formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
     logging.Formatter.converter = time.gmtime
     
-    logger = setup_logger('smartcamluvsu_logger', logfile, formatter, level=logging.INFO)
+    logger = setup_logger('smartcam_logger', logfile, formatter, level=logging.INFO)
 
     # Start the app.
     run_experiment()
