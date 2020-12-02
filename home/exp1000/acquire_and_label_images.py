@@ -79,7 +79,7 @@ class AppConfig:
         self.raw_compression_type = self.config.get('conf', 'raw_compression_type')
 
         # The size in which the packaged raw images should be split.
-        self.raw_compression_split = self.config.get('conf', 'raw_compression_split')
+        self.downlink_compressed_split = self.config.get('conf', 'downlink_compressed_split')
 
         # Flag if thumbnails should be downlinked.
         self.downlink_thumbnails = self.config.get('conf', 'downlink_thumbnails')
@@ -794,7 +794,7 @@ def run_experiment():
 
             # Raw packages can be huge so split the tar file and save smaller chunks in filestore's toGround folder.
             cmd_split_tar = 'split -b {B} {T} {P}'.format(\
-                B=cfg.raw_compression_split,\
+                B=cfg.downlink_compressed_split,\
                 T=tar_path,\
                 P=FILESTORE_TOGROUND_PATH + "/" + ntpath.basename(tar_path) + "_")
 
