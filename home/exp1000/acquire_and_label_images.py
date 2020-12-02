@@ -9,39 +9,42 @@ import time
 import datetime
 import json
 import operator
+import ntpath
 from pathlib import Path
 
 __author__ = 'Georges Labreche, Georges.Labreche@esa.int'
 
-# FIXME: Make these as constant type.
-
 # The experiment id number.
-exp_id = 1000
+EXP_ID = 1000
 
 # The experiment's base path.
 # FIXME: Uncomment for deployment. 
-#base_path = '/home/exp' + str(exp_id)
-base_path = '/home/georges/dev/SmartCamLuvsU/home/exp1000'
+#BASE_PATH = '/home/exp' + str(EXP_ID)
+BASE_PATH = '/home/georges/dev/SmartCamLuvsU/home/exp1000'
 
 # The experiment's config file path.
-config_file = base_path + '/config.ini'
+CONFIG_FILE = BASE_PATH + '/config.ini'
 
 # The experiment's toGround folder path.
-toGround_path = base_path + '/toGround'
+TOGROUND_PATH = BASE_PATH + '/toGround'
 
 # The filestore's toGround folder path.
-filestore_toGroud = '/home/root/esoc-apps/fms/filestore/toGround'
+FILESTORE_TOGROUND_PATH = '/home/root/esoc-apps/fms/filestore/toGround'
 
 # Image classifier program file path.
-program_path = base_path + '/bin/tensorflow/lite/c/image_classifier'
+PROGRAM_PATH = BASE_PATH + '/bin/tensorflow/lite/c/image_classifier'
 
-start_time = datetime.datetime.utcnow()
+# The supported compression types.
+SUPPORTED_COMPRESSION_TYPES = ['fapec']
+
+# The experiment start time.
+START_TIME = datetime.datetime.utcnow()
 
 # The experiment's log folder path.
-log_path = base_path + '/logs'
+LOG_PATH = BASE_PATH + '/logs'
 
 # The experiment's log file path.
-logfile =  log_path + '/opssat_smartcam_{D}.log'.format(D=start_time.strftime("%Y%m%d_%H%M%S"))
+LOG_FILE = LOG_PATH + '/opssat_smartcam_{D}.log'.format(D=START_TIME.strftime("%Y%m%d_%H%M%S"))
 
 # The logger.
 logger = None
@@ -51,7 +54,7 @@ class AppConfig:
     def __init__(self):
         # Init the config parser, read the config file.
         self.config = configparser.ConfigParser()
-        self.config.read(config_file)
+        self.config.read(CONFIG_FILE)
 
         # Init the conf config section properties.
         self.init_conf_props()
@@ -64,7 +67,7 @@ class AppConfig:
 
 
     def init_conf_props(self):
-        """Fetch general configuration parameters"""
+        """Fetch general configuration parameters."""
 
         # Flag if logs should be downlinked even if no images are classified to be kept.
         self.downlink_log_if_no_images = self.config.getboolean('conf', 'downlink_log_if_no_images')
@@ -72,12 +75,22 @@ class AppConfig:
         # The first model to apply.
         self.next_model = self.config.get('conf', 'entry_point_model')
 
-        # The compression to apply
-        self.compression = self.config.get('conf', 'compression')
+        # The compression type to apply.
+        self.raw_compression_type = self.config.get('conf', 'raw_compression_type')
+
+        # The size in which the packaged raw images should be split.
+        self.raw_compression_split = self.config.get('conf', 'raw_compression_split')
+
+        # Flag if thumbnails should be downlinked.
+        self.downlink_thumbnails = self.config.get('conf', 'downlink_thumbnails')
+
+        # Flag if the packaged raw images should be automatically moved to the filestore's toGround folder.
+        # If yes, then the images will be downlinked during the next pass.
+        self.downlink_compressed_raws = self.config.get('conf', 'downlink_compressed_raws')
 
 
     def init_model_props(self, model_name):
-        """Fetch model configuration parameters"""
+        """Fetch model configuration parameters."""
 
         # Get the config section name for the current model.
         model_cfg_section_name = 'model_' + model_name
@@ -116,7 +129,6 @@ class AppConfig:
         self.compression_fapec_losses = self.config.getint(fapec_cfg_section_name, 'losses')
         self.compression_fapec_meaningful_bits = self.config.getint(fapec_cfg_section_name, 'meaningful_bits')
         self.compression_fapec_lev = self.config.getint(fapec_cfg_section_name, 'lev')
-        self.compression_fapec_del = self.config.getint(fapec_cfg_section_name, 'del')
 
         return True
 
@@ -146,7 +158,7 @@ class AppConfig:
 
 
     def init_img_props(self):
-        """Fetch image parameters"""
+        """Fetch image parameters."""
 
         # Fetch image file retention parameters.
         self.raw_keep = self.config.getboolean('img', 'raw_keep')
@@ -168,9 +180,8 @@ class AppConfig:
 class Fapec:
 
     bin_path = '/home/exp100/fapec'
-    toGround_path = '/home/exp100/toGround'
 
-    def __init__(self, chunk, threads, dtype, band, losses, meaningful_bits, lev, del_src, logfile):
+    def __init__(self, chunk, threads, dtype, band, losses, meaningful_bits, lev):
         """Iniitialize the Fapec compression class."""
 
         self.chunk = chunk
@@ -180,8 +191,6 @@ class Fapec:
         self.losses = losses
         self.meaningful_bits = meaningful_bits
         self.lev = lev
-        self.del_src = "-del" if del_src else '' 
-        self.logfile = logfile
 
 
     def compress(self, src, dst):
@@ -190,7 +199,7 @@ class Fapec:
         #TODO: Check if lev should not be included when set to 0.
 
         # The fapec compression command with all parameters.
-        cmd_compress = '{BIN} q -chunk {C} -mt {T} -dtype {DT} -cillic 2048 1944 {B} {L} {MB} 4 {LEV} {DEL} -ow -o {DST} {SRC} >> {LOG} 2>&1'.format(\
+        cmd_compress = '{BIN} q -chunk {C} -mt {T} -dtype {DT} -cillic 2048 1944 {B} {L} {MB} 4 {LEV} -ow -o {DST} {SRC} >> {LOG} 2>&1'.format(\
             BIN=self.bin_path,\
             C=self.chunk,\
             T=self.threads,\
@@ -199,10 +208,9 @@ class Fapec:
             L=self.losses,\
             MB=self.meaningful_bits,\
             LEV='-lev ' + str(self.lev) if self.lev > 0 else '',\
-            DEL=self.del_src,\
             SRC=src,\
             DST=dst,\
-            LOG=self.logfile)
+            LOG=LOG_FILE)
 
         # Apply the compression.
         os.system(cmd_compress)
@@ -210,28 +218,30 @@ class Fapec:
 
 class Utils:
 
-    def remove_images(self):
-        """Delete image files created on the project's root directory while processing the acquired image.
-        These files could exist due to an unhandled error during a previous run so as a precaution we also run this function prior to image acquisition.
+    def cleanup(self):
+        """Delete files created on the project's root directory while processing the acquired image.
+
+        These files could exist due to an unhandled error during a previous run so as a precaution 
+        we also run this function prior to image acquisition.
         """
 
         # Count the number of files deleted.
         delete_count = 0
 
         # Loop through all the file types to delete.
-        for ext in ['ims_rgb', 'png', 'jpeg']:
+        for ext in ['ims_rgb', 'png', 'jpeg', 'tar', 'tar.gz']:
 
             # Get a list of all the file paths that ends with .txt from in specified directory
-            img_files = glob.glob(base_path + "/*." + ext)
+            img_files = glob.glob(BASE_PATH + "/*." + ext)
 
             for f in img_files:
                 try:
                     os.remove(f)
                     delete_count = delete_count + 1
-                    logger.info("Removed image file: " + f)
+                    logger.info("Removed file: " + f)
 
                 except:
-                    logger.error("Error removing image file: " + f)
+                    logger.error("Error removing file: " + f)
                     return -1
 
         return delete_count
@@ -279,28 +289,28 @@ class Utils:
         return False, None
 
 
-    def move_images_for_keeping(self, applied_label):
+    def move_images_for_keeping(self, raw_keep, png_keep, applied_label):
 
         # Remove the raw image file if it is not flagged to be kept.
-        if not cfg.raw_keep:
+        if not raw_keep:
             # FIXME: Consider using os.remove(file_raw). Would have to set file_raw first.
-            cmd_remove_raw_image = 'rm ' + base_path + '/*.ims_rgb'
+            cmd_remove_raw_image = 'rm ' + BASE_PATH + '/*.ims_rgb'
             os.system(cmd_remove_raw_image)
 
         # Remove the png image file if it is not flagged to be kept.
-        if not cfg.png_keep:
+        if not png_keep:
             # FIXME: Consider using os.remove(file_png). The file_png variable already exists.
-            cmd_remove_png_image = 'rm ' + base_path + '/*.png'
+            cmd_remove_png_image = 'rm ' + BASE_PATH + '/*.png'
             os.system(cmd_remove_png_image)
 
         # Remove the jpeg image that was used as an input for the image classification program.
         # FIXME: Consider using os.remove(file_image_input). The file_image_input variable already exists.
-        cmd_remove_input_image = 'rm ' + base_path + '/*_input.jpeg'
+        cmd_remove_input_image = 'rm ' + BASE_PATH + '/*_input.jpeg'
         os.system(cmd_remove_input_image)
 
         # Create a label directory in the experiment's toGround directory.
         # This is where the images will be moved to and how we categorize images based on their predicted labels.
-        toGround_label_dir = toGround_path + '/' + applied_label
+        toGround_label_dir = TOGROUND_PATH + '/' + applied_label
         if not os.path.exists(toGround_label_dir):
             os.makedirs(toGround_label_dir)
         
@@ -311,58 +321,83 @@ class Utils:
         os.system(cmd_move_images)
 
 
-    def package_images_for_downlinking(self, downlink_log_if_no_images):
+    def package_files_for_downlinking(self, file_ext, downlink_log_if_no_images):
         try:
 
-            # Count how many thumbnails images were kept and moved to the experiment's toGround folder.
-            thumbnail_count = len(list(Path(toGround_path).rglob('*.jpeg')))
+            # Don't use gzip if files are already a compression file type.
+            # Check against a list of file types in case multiple compression types are supported.
+            tar_options = '-czf' if file_ext in SUPPORTED_COMPRESSION_TYPES else '-cf'
+            tar_ext = 'tar.gz' if file_ext in SUPPORTED_COMPRESSION_TYPES else '.tar' 
+
+            # The destination tar file path for the packaged files.
+            tar_path = '{TG}/opssat_smartcam_{FILE_EXT}_exp{expID}_{D}.{TAR_EXT}'.format(\
+                    TG=TOGROUND_PATH,\
+                    FILE_EXT=file_ext,\
+                    expID=EXP_ID,\
+                    D=START_TIME.strftime("%Y%m%d_%H%M%S"),\
+                    TAR_EXT=tar_ext)
+
+            # Count how many images were kept and moved to the experiment's toGround folder.
+            image_count = len(list(Path(TOGROUND_PATH).rglob('*.' + file_ext)))
 
             # Count how many log files were produced.
-            log_count = len(list(Path(log_path).rglob('*.log')))
+            log_count = len(list(Path(LOG_PATH).rglob('*.log')))
             
-            # Tar thumbnail(s) for downlink if at least 1 thumbnail was classified with a label of interest.
-            if thumbnail_count > 0:
+            # Tar images(s) for downlink if at least 1 image was classified with a label of interest.
+            if image_count > 0:
 
-                # Log that we are tarring some thumbnails.
-                logger.info("Tarring {T} thumbnail(s) labeled for downlink.".format(T=thumbnail_count))
+                # Log that we are tarring some images.
+                logger.info("Tarring {T} images(s) labeled for downlink.".format(T=image_count))
 
-                # Use tar to package thumbnails and log files into the filestore's toGround folder.
-                os.system('tar -czf {FSG}/opssat_smartcam_exp{expID}_{D}.tar.gz {G}/**/*.jpeg {L}/*.log --remove-files'.format(\
-                    FSG=filestore_toGroud,\
-                    expID=exp_id,\
-                    D=start_time.strftime("%Y%m%d_%H%M%S"),\
-                    G=toGround_path,\
-                    L=log_path))
+                # Use tar to package image and log files into the filestore's toGround folder.
+                os.system('tar {TAR_O} {TAR_PATH} {G}/**/*.{FILE_EXT} {L}/*.log --remove-files'.format(\
+                    TAR_O=tar_options,\
+                    TAR_PATH=tar_path,\
+                    G=TOGROUND_PATH,\
+                    FILE_EXT=file_ext,\
+                    L=LOG_PATH))
+
+                # Return experiment toGround path to tar file.
+                return tar_path
 
             elif downlink_log_if_no_images is True and log_count > 0:
 
                 # Log that we are only tarring log files.
-                logger.info("No thumbnail(s) kept but tarring logs for downlink.")
+                logger.info("No image(s) kept but tarring logs for downlink.")
 
                 # Use tar to package log files into the filestore's toGround folder.
-                os.system('tar -czf {FSG}/opssat_smartcam_exp{expID}_{D}.tar.gz {L}/*.log --remove-files'.format(\
-                    FSG=filestore_toGroud,\
-                    expID=exp_id,\
-                    D=start_time.strftime("%Y%m%d_%H%M%S"),\
-                    L=log_path))
+                os.system('tar {TAR_O} {TAR_PATH} {L}/*.log --remove-files'.format(\
+                    TAR_O=tar_options,\
+                    TAR_PATH=tar_path,\
+                    L=LOG_PATH))
+
+                # Return experiment toGround path to tar file.
+                return tar_path
 
             else:
                 # No images and no logs. Unlikely.
-                logger.info("No thumbnail(s) kept nor logs produced for downlink.")
+                logger.info("No images(s) kept nor logs produced for downlink.")
+
+                # Return None.
+                return None
 
         except:
-            # In case this happens, the thumbnails will be tarred at the end of the next experiment's run unless explicitely deleted.
-            logger.exception("Failed to tar kept thumbnails for downlink (if any):")
+            # In case this happens, the image will be tarred at the end of the next experiment's run unless explicitely deleted.
+            logger.exception("Failed to tar kept image for downlink (if any).")
+
+            # Return None.
+            return None
+
     
     def log_housekeeping_data(self):
             
         # Contents of the experiment's toGround folder
-        toGround_listing = subprocess.check_output(['ls', '-larth', toGround_path]).decode('utf-8')
-        logger.info('Contents of {G}:'.format(G=toGround_path))
+        toGround_listing = subprocess.check_output(['ls', '-larth', TOGROUND_PATH]).decode('utf-8')
+        logger.info('Contents of {G}:'.format(G=TOGROUND_PATH))
         logger.info(toGround_listing)
 
         # toGround files
-        du_output = subprocess.check_output(['du', '-ah', toGround_path]).decode('utf-8')
+        du_output = subprocess.check_output(['du', '-ah', TOGROUND_PATH]).decode('utf-8')
         logger.info('toGround content:\n' + du_output) 
 
         # Disk usage.
@@ -371,14 +406,13 @@ class Utils:
 
 class HDCamera:
 
-    def __init__(self, gains, exposure, logfile):
+    def __init__(self, gains, exposure):
         self.gains = gains
         self.exposure = exposure
-        self.logfile = logfile
 
     def acquire_image(self):
         # FIXME: remove for deployment
-        return base_path + "/earth.png" 
+        return BASE_PATH + "/earth.png" 
 
         '''
 
@@ -388,7 +422,7 @@ class HDCamera:
             G=self.gains[1],\
             B=self.gains[2],\
             E=self.exposure,\
-            L=self.logfile)
+            L=LOG_FILE)
         
         # Log the command that will be executed.
         logger.info("Running command to acquire an image: {C}".format(C=cmd_image_acquisition))
@@ -397,7 +431,7 @@ class HDCamera:
         os.system(cmd_image_acquisition)
 
         # Check that png file exists...
-        png_files = glob.glob(base_path + "/*.png")
+        png_files = glob.glob(BASE_PATH + "/*.png")
         
         # If the png file doesn't exist then skip this iteration.
         if len(png_files) != 1:
@@ -516,7 +550,7 @@ class ImageClassifier:
         try:
             # Build the image labeling command.
             cmd_label_image = '{P} {I} {M} {L} {height} {width} {mean} {std}'.format(\
-                P=program_path,\
+                P=PROGRAM_PATH,\
                 I=cfg.file_image_input,\
                 M=cfg.tflite_model,\
                 L=cfg.file_labels,\
@@ -562,7 +596,7 @@ def run_experiment():
     cfg = AppConfig()
 
     utils = Utils()
-    camera = HDCamera(cfg.gen_gains, cfg.gen_exposure, logfile)
+    camera = HDCamera(cfg.gen_gains, cfg.gen_exposure)
     img_editor = ImageEditor()
     img_classifier = ImageClassifier()
     
@@ -570,7 +604,7 @@ def run_experiment():
     raw_compressor = None
 
     # Raw image file compression will also only be applied of the raw files are marked to be kept.
-    if cfg.raw_keep is True and cfg.compression == 'fapec' and cfg.init_compression_fapec_props() is True:
+    if cfg.raw_keep is True and cfg.raw_compression_type == 'fapec' and cfg.init_compression_fapec_props() is True:
 
         # Instanciate compression object that will be used to compress the raw image files.
         raw_compressor = Fapec(self.compression_fapec_chunk,\
@@ -579,11 +613,9 @@ def run_experiment():
             self.compression_fapec_band,\
             self.compression_fapec_losses,\
             self.compression_fapec_meaningful_bits,\
-            self.compression_fapec_lev,\
-            self.compression_fapec_del,
-            logfile)
+            self.compression_fapec_lev)
 
-        logger.info("Raw image file compression enabled: " + cfg.compression + ".")
+        logger.info("Raw image file compression enabled: " + cfg.raw_compression_type + ".")
 
     else:
         # No compression will be applied to the raw image files.
@@ -601,7 +633,7 @@ def run_experiment():
 
             # FIXME: Uncomment for deployment. 
             # Cleanup any files that may have been left over from a previous run that may have terminated ungracefully.
-            #if utils.remove_images() < 0:
+            #if utils.cleanup() < 0:
             #    success = False
 
             # If experiment's root directory is clean, i.e. no images left over from a previous image acquisition, then acquire a new image.
@@ -681,7 +713,7 @@ def run_experiment():
                     logger.info("Ditching the image.")
 
                     # Remove image.
-                    remove_images(logger)
+                    cleanup(logger)
                 
                 # Move the image to the experiment's toGround folder if we have gone through all the
                 # models in the pipeline and still have an image that is labeled to keep for downlinking.
@@ -690,18 +722,22 @@ def run_experiment():
                     # The current image has been classified with a label of interest.
                     # Keep the image but only the types as per what is configured in the the config.ini file.
                     logger.info("Keeping the image.")
-                    
-                    # Move the images for keeping.
-                    # FIXME: Pass required variabled, e.g. cfg.
-                    utils.move_images_for_keeping(applied_label)
 
-                    # Compress raw images if configured to do so.
+                    # Compress raw image if configured to do so.
                     if raw_compressor is not None:
-                        # TODO: Get raw image path.
-                        raw_image_file_path = 'TODO.ims_rgb'
-                        raw_compressor.compress(raw_image_file_path, raw_compressor.toGround_path)
 
-                    # Todo check for split and move to filestore toGround directory.
+                        # Log message to indicate compression.
+                        logger.info("Compressing the raw image.")
+                        
+                        # Source and destination file paths for raw image file compression.
+                        file_raw_image = BASE_PATH + "/" + file_png.replace(".png", ".ims_rgb")
+                        file_raw_image_compressed = TOGROUND_PATH + "/" + applied_label + "/" + file_png.replace(".png", "." + cfg.raw_compression_type)
+                        
+                        # Compress the raw image file.
+                        raw_compressor.compress(file_raw_image, file_raw_image_compressed)
+
+                    # Move the images for keeping.
+                    utils.move_images_for_keeping(cfg.raw_keep, cfg.png_keep, applied_label)
 
         except:
             # In case of exception just log the stack trace and proceed to the next image acquisition iteration.
@@ -730,12 +766,40 @@ def run_experiment():
             done = True
 
     # We have exited the image acquisition and labeling loop.
-    # This means that we have finished acquiring and lebeling the acquired imaged. 
-    # It's time to tar the thumbnail image and the log file for downlinking.
-    utils.package_images_for_downlinking(cfg.downlink_log_if_no_images)
+    # This means that we have finished acquiring and labeling the acquired imaged. 
 
-    # Finally, log some housekeeping data.
+    # Log some housekeeping data.
     utils.log_housekeeping_data()
+
+    # Tar the images and the log files for downlinking.
+
+    # Package thumbnails for downlinking.
+    if cfg.downlink_thumbnails:
+        tar_path = utils.package_files_for_downlinking("jpeg", cfg.downlink_log_if_no_images)
+
+        if tar_path is not None:
+
+            cmd_move_tar = 'mv {T} {G}'.format(\
+                T=tar_path,
+                G=FILESTORE_TOGROUND_PATH)
+
+            # Move the tar package to filestore's toGround folder.
+            os.system(cmd_move_tar)
+
+    # Package compressed raws for downlinking.
+    if cfg.downlink_compressed_raws and raw_compressor is not None:
+        tar_path = utils.package_files_for_downlinking(cfg.raw_compression_type, cfg.downlink_log_if_no_images)
+
+        if tar_path is not None:
+
+            # Raw packages can be huge so split the tar file and save smaller chunks in filestore's toGround folder.
+            cmd_split_tar = 'split -b {B} {T} {P}'.format(\
+                B=cfg.raw_compression_split,\
+                T=tar_path
+                P=FILESTORE_TOGROUND_PATH + "/" + ntpath.basename(tar_path) + "_")
+
+            # Move the tar package to filestore's toGround folder.
+            os.system(cmd_split_tar)
 
 
 def setup_logger(name, log_file, formatter, level=logging.INFO):
@@ -766,7 +830,7 @@ if __name__ == '__main__':
     formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
     logging.Formatter.converter = time.gmtime
     
-    logger = setup_logger('smartcam_logger', logfile, formatter, level=logging.INFO)
+    logger = setup_logger('smartcam_logger', LOG_FILE, formatter, level=logging.INFO)
 
     # Start the app.
     run_experiment()
