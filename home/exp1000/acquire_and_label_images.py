@@ -780,7 +780,7 @@ def run_experiment():
         if tar_path is not None:
 
             cmd_move_tar = 'mv {T} {G}'.format(\
-                T=tar_path,
+                T=tar_path,\
                 G=FILESTORE_TOGROUND_PATH)
 
             # Move the tar package to filestore's toGround folder.
@@ -795,7 +795,7 @@ def run_experiment():
             # Raw packages can be huge so split the tar file and save smaller chunks in filestore's toGround folder.
             cmd_split_tar = 'split -b {B} {T} {P}'.format(\
                 B=cfg.raw_compression_split,\
-                T=tar_path
+                T=tar_path,\
                 P=FILESTORE_TOGROUND_PATH + "/" + ntpath.basename(tar_path) + "_")
 
             # Move the tar package to filestore's toGround folder.
