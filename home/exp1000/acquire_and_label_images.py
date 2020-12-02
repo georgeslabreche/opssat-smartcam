@@ -766,7 +766,7 @@ def run_experiment():
             done = True
 
     # We have exited the image acquisition and labeling loop.
-    # This means that we have finished acquiring and labeling the acquired imaged. 
+    # This means that we have finished labeling the acquired images. 
 
     # Log some housekeeping data.
     utils.log_housekeeping_data()
