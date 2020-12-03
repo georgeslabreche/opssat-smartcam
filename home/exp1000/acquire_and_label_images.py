@@ -18,7 +18,7 @@ __author__ = 'Georges Labreche, Georges.Labreche@esa.int'
 EXP_ID = 1000
 
 # The experiment's base path.
-# FIXME: Uncomment for deployment. 
+# TODO: Uncomment for deployment. 
 #BASE_PATH = '/home/exp' + str(EXP_ID)
 BASE_PATH = '/home/georges/dev/SmartCamLuvsU/home/exp1000'
 
@@ -29,10 +29,16 @@ CONFIG_FILE = BASE_PATH + '/config.ini'
 TOGROUND_PATH = BASE_PATH + '/toGround'
 
 # The filestore's toGround folder path.
-FILESTORE_TOGROUND_PATH = '/home/root/esoc-apps/fms/filestore/toGround'
+# TODO: Uncomment for deployment. 
+# FILESTORE_TOGROUND_PATH = '/home/root/esoc-apps/fms/filestore/toGround'
+FILESTORE_TOGROUND_PATH = '/home/georges/dev/toGround'
 
 # Image classifier program file path.
-PROGRAM_PATH = BASE_PATH + '/bin/tensorflow/lite/c/image_classifier'
+IMAGE_CLASSIFIER_BIN_PATH = BASE_PATH + '/bin/tensorflow/lite/c/image_classifier'
+
+# TODO: Uncomment for deployment. 
+# FAPEC_BIN_PATH = '/home/exp100/fapec'
+FAPEC_BIN_PATH = BASE_PATH + '/test/fapec'
 
 # The supported compression types.
 SUPPORTED_COMPRESSION_TYPES = ['fapec']
@@ -73,7 +79,7 @@ class AppConfig:
         self.downlink_log_if_no_images = self.config.getboolean('conf', 'downlink_log_if_no_images')
 
         # The first model to apply.
-        self.next_model = self.config.get('conf', 'entry_point_model')
+        self.entry_point_model = self.config.get('conf', 'entry_point_model')
 
         # The compression type to apply.
         self.raw_compression_type = self.config.get('conf', 'raw_compression_type')
@@ -82,11 +88,11 @@ class AppConfig:
         self.downlink_compressed_split = self.config.get('conf', 'downlink_compressed_split')
 
         # Flag if thumbnails should be downlinked.
-        self.downlink_thumbnails = self.config.get('conf', 'downlink_thumbnails')
+        self.downlink_thumbnails = self.config.getboolean('conf', 'downlink_thumbnails')
 
         # Flag if the packaged raw images should be automatically moved to the filestore's toGround folder.
         # If yes, then the images will be downlinked during the next pass.
-        self.downlink_compressed_raws = self.config.get('conf', 'downlink_compressed_raws')
+        self.downlink_compressed_raws = self.config.getboolean('conf', 'downlink_compressed_raws')
 
 
     def init_model_props(self, model_name):
@@ -112,7 +118,7 @@ class AppConfig:
         return True
 
 
-    def init_compression_fapec_props(self)
+    def init_compression_fapec_props(self):
         """Fetch fapec compression parameters."""
 
          # Get the config section name for fapec compression.
@@ -122,11 +128,11 @@ class AppConfig:
         if self.config.has_section(fapec_cfg_section_name) is False:
             return False
         
-        self.compression_fapec_chunk = self.config.getint(fapec_cfg_section_name, 'chunk')
+        self.compression_fapec_chunk = self.config.get(fapec_cfg_section_name, 'chunk')
         self.compression_fapec_threads = self.config.getint(fapec_cfg_section_name, 'threads')
         self.compression_fapec_dtype = self.config.getint(fapec_cfg_section_name, 'dtype')
         self.compression_fapec_band = self.config.getint(fapec_cfg_section_name, 'band')
-        self.compression_fapec_losses = self.config.getint(fapec_cfg_section_name, 'losses')
+        self.compression_fapec_losses = self.config.get(fapec_cfg_section_name, 'losses')
         self.compression_fapec_meaningful_bits = self.config.getint(fapec_cfg_section_name, 'meaningful_bits')
         self.compression_fapec_lev = self.config.getint(fapec_cfg_section_name, 'lev')
 
@@ -179,7 +185,7 @@ class AppConfig:
 
 class Fapec:
 
-    bin_path = '/home/exp100/fapec'
+    bin_path = FAPEC_BIN_PATH
 
     def __init__(self, chunk, threads, dtype, band, losses, meaningful_bits, lev):
         """Iniitialize the Fapec compression class."""
@@ -199,7 +205,7 @@ class Fapec:
         #TODO: Check if lev should not be included when set to 0.
 
         # The fapec compression command with all parameters.
-        cmd_compress = '{BIN} q -chunk {C} -mt {T} -dtype {DT} -cillic 2048 1944 {B} {L} {MB} 4 {LEV} -ow -o {DST} {SRC} >> {LOG} 2>&1'.format(\
+        cmd_compress = '{BIN} -q -chunk {C} -mt {T} -dtype {DT} -cillic 2048 1944 {B} {L} {MB} 4 {LEV} -ow -o {DST} {SRC} >> {LOG} 2>&1'.format(\
             BIN=self.bin_path,\
             C=self.chunk,\
             T=self.threads,\
@@ -211,6 +217,9 @@ class Fapec:
             SRC=src,\
             DST=dst,\
             LOG=LOG_FILE)
+
+        # Log compression command that will be executed.
+        logger.info("Running command to compress image: {C}".format(C=cmd_compress))
 
         # Apply the compression.
         os.system(cmd_compress)
@@ -247,10 +256,10 @@ class Utils:
         return delete_count
 
 
-    def get_image_keep_status_and_next_model(self, applied_label):
+    def get_image_keep_status_and_next_model(self, applied_label, labels_keep):
         
         # Check if the labeled image should be ditched or kept based on what is set in the config.ini file.
-        for lbl_k in cfg.labels_keep:
+        for lbl_k in labels_keep:
 
             # The label value can be a pair of values represented as a colon seperated string.
             #
@@ -293,18 +302,15 @@ class Utils:
 
         # Remove the raw image file if it is not flagged to be kept.
         if not raw_keep:
-            # FIXME: Consider using os.remove(file_raw). Would have to set file_raw first.
             cmd_remove_raw_image = 'rm ' + BASE_PATH + '/*.ims_rgb'
             os.system(cmd_remove_raw_image)
 
         # Remove the png image file if it is not flagged to be kept.
         if not png_keep:
-            # FIXME: Consider using os.remove(file_png). The file_png variable already exists.
             cmd_remove_png_image = 'rm ' + BASE_PATH + '/*.png'
             os.system(cmd_remove_png_image)
 
         # Remove the jpeg image that was used as an input for the image classification program.
-        # FIXME: Consider using os.remove(file_image_input). The file_image_input variable already exists.
         cmd_remove_input_image = 'rm ' + BASE_PATH + '/*_input.jpeg'
         os.system(cmd_remove_input_image)
 
@@ -326,8 +332,8 @@ class Utils:
 
             # Don't use gzip if files are already a compression file type.
             # Check against a list of file types in case multiple compression types are supported.
-            tar_options = '-czf' if file_ext in SUPPORTED_COMPRESSION_TYPES else '-cf'
-            tar_ext = 'tar.gz' if file_ext in SUPPORTED_COMPRESSION_TYPES else '.tar' 
+            tar_options = '-cf' if file_ext in SUPPORTED_COMPRESSION_TYPES else '-czf'
+            tar_ext = 'tar' if file_ext in SUPPORTED_COMPRESSION_TYPES else 'tar.gz' 
 
             # The destination tar file path for the packaged files.
             tar_path = '{TG}/opssat_smartcam_{FILE_EXT}_exp{expID}_{D}.{TAR_EXT}'.format(\
@@ -347,7 +353,7 @@ class Utils:
             if image_count > 0:
 
                 # Log that we are tarring some images.
-                logger.info("Tarring {T} images(s) labeled for downlink.".format(T=image_count))
+                logger.info("Tarring {T} file(s) for downlink.".format(T=image_count))
 
                 # Use tar to package image and log files into the filestore's toGround folder.
                 os.system('tar {TAR_O} {TAR_PATH} {G}/**/*.{FILE_EXT} {L}/*.log --remove-files'.format(\
@@ -406,13 +412,18 @@ class Utils:
 
 class HDCamera:
 
+    #TODO: Remove for PROD
+    test_image_index = 1
+
     def __init__(self, gains, exposure):
         self.gains = gains
         self.exposure = exposure
 
     def acquire_image(self):
         # FIXME: remove for deployment
-        return BASE_PATH + "/earth.png" 
+        img_file_path = BASE_PATH + "/earth_" + str(self.test_image_index) + ".png"
+        self.test_image_index = self.test_image_index + 1
+        return img_file_path 
 
         '''
 
@@ -550,14 +561,14 @@ class ImageClassifier:
         try:
             # Build the image labeling command.
             cmd_label_image = '{P} {I} {M} {L} {height} {width} {mean} {std}'.format(\
-                P=PROGRAM_PATH,\
-                I=cfg.file_image_input,\
-                M=cfg.tflite_model,\
-                L=cfg.file_labels,\
-                height=cfg.input_height,\
-                width=cfg.input_width,\
-                mean=cfg.input_mean,\
-                std=cfg.input_std)
+                P=IMAGE_CLASSIFIER_BIN_PATH,\
+                I=image_filename,\
+                M=model_tflite_filenmae,\
+                L=labels_filename,\
+                height=image_height,\
+                width=image_width,\
+                mean=image_mean,\
+                std=image_std)
 
             # Log the command that will be executed.
             logger.info("Running command to label the image: {C}".format(C=cmd_label_image))
@@ -603,17 +614,17 @@ def run_experiment():
     # Instanciate a compressor object if a compression algorithm was specified and configured in the config.ini.
     raw_compressor = None
 
-    # Raw image file compression will also only be applied of the raw files are marked to be kept.
-    if cfg.raw_keep is True and cfg.raw_compression_type == 'fapec' and cfg.init_compression_fapec_props() is True:
+    # Raw image file compression will only be applied if we enable compressed raw downlinking.
+    if cfg.downlink_compressed_raws and cfg.raw_compression_type == 'fapec' and cfg.init_compression_fapec_props() is True:
 
         # Instanciate compression object that will be used to compress the raw image files.
-        raw_compressor = Fapec(self.compression_fapec_chunk,\
-            self.compression_fapec_threads,\
-            self.compression_fapec_dtype,\
-            self.compression_fapec_band,\
-            self.compression_fapec_losses,\
-            self.compression_fapec_meaningful_bits,\
-            self.compression_fapec_lev)
+        raw_compressor = Fapec(cfg.compression_fapec_chunk,\
+            cfg.compression_fapec_threads,\
+            cfg.compression_fapec_dtype,\
+            cfg.compression_fapec_band,\
+            cfg.compression_fapec_losses,\
+            cfg.compression_fapec_meaningful_bits,\
+            cfg.compression_fapec_lev)
 
         logger.info("Raw image file compression enabled: " + cfg.raw_compression_type + ".")
 
@@ -631,8 +642,8 @@ def run_experiment():
             # Flag indicating if we should skip the image acquisition and labeling process in case of an encountered error.
             success = True
 
-            # FIXME: Uncomment for deployment. 
             # Cleanup any files that may have been left over from a previous run that may have terminated ungracefully.
+            #TODO: Remove comment for Prod
             #if utils.cleanup() < 0:
             #    success = False
 
@@ -644,18 +655,23 @@ def run_experiment():
                 # Check if image acquisition was OK.
                 success = True if file_png is not None else False
             
-            # If we have successfully acquired a png file then proceed with creating the jpeg thumbnail.
-            if success:
+            # If we have successfully acquired a png file then the jpeg thumbnail if we want to downlink thumbnails.
+            if success and cfg.downlink_thumbnails:
                 # The thumbnail filename.
                 file_thumbnail = file_png.replace(".png", "_thumbnail.jpeg")
                 
                 # Create the thumbnail.
-                success = img_editor.create_thumbnail(file_png, file_thumbnail, cfg.jpeg_scaling, cfg.jpeg_quality, cfg.jpeg_processing)
+                #TODO: Uncomment for PROD.
+                #success = img_editor.create_thumbnail(file_png, file_thumbnail, cfg.jpeg_scaling, cfg.jpeg_quality, cfg.jpeg_processing)
 
             # Proceed if we have successfully create the thumbnail image.
             if success:
+
                 # By default, assume the image that will be classified will not be kept.
                 keep_image = False
+
+                # Set the first image classification model to apply.
+                next_model = cfg.entry_point_model
 
                 # Keep applying follow up models to the kept image as long as images are labeled to be kept and follow up models are defined.
                 while next_model is not None:
@@ -673,23 +689,30 @@ def run_experiment():
                         logger.info("Labeling the image using the '{M}' model.".format(M=next_model))
 
                     # File name of the image file that will be used as the input image to feed the image classification model.
-                    file_image_input = file_thumbnail.replace("_thumbnail.jpeg", "_input.jpeg")
+                    file_image_input = file_png.replace(".png", "_input.jpeg")
 
                     # Create the image that will be used as the input for the neural network image classification model.
+                    #TODO: Uncomment for PROD.
+                    """
                     success = image_editor.create_input_image(\
                         file_png, file_image_input,\
                         cfg.input_height, cfg.input_width,\
                         cfg.jpeg_scaling, cfg.jpeg_quality, cfg.jpeg_processing)
+                    """
 
                     # Input image for the model was successfully created, proceed with running the image classification program.
                     if success:
                         # Label the image.
                         predictions_dict = img_classifier.label_image(\
-                            cfg.file_image_input, cfg.tflite_mode, cfg.file_labels,\
+                            file_image_input, cfg.tflite_model, cfg.file_labels,\
                             cfg.input_height, cfg.input_width, cfg.input_mean, cfg.input_std)
 
+                        # Break out of the loop if the image classification program returns an error.
+                        if predictions_dict is None:
+                            break
+
                         # Fetch image classification result if the image classification program doesn't return an error code.
-                        if predictions_dict:
+                        elif predictions_dict:
 
                             # Get label with highest prediction confidence.
                             applied_label = max(predictions_dict.items(), key=operator.itemgetter(1))[0]
@@ -697,6 +720,9 @@ def run_experiment():
                             # If the image classification is not greater or equal to a certain threshold then discard it.
                             if float(predictions_dict[applied_label]) < float(cfg.confidence_threshold):
                                 logger.info("Insufficient prediction confidence level to label the image (the threshold is currently set to " + cfg.confidence_threshold + ").")
+
+                                # Break out of the loop if the prediction confidence is not high enough and we cannot proceed in labeling the image.
+                                break
                             
                             else:
                                 # Log highest confidence prediction.
@@ -704,7 +730,7 @@ def run_experiment():
 
                                 # Determine if we are keeping the image and if we are applying another classification model to it.
                                 # If next_model is not None then proceed to another iteration of this model pipeline loop.
-                                keep_image, next_model = utils.get_image_keep_status_and_next_model(applied_label)
+                                keep_image, next_model = utils.get_image_keep_status_and_next_model(applied_label, cfg.labels_keep)
 
                 # We have exited the model pipeline loop.
                 # Remove the image if it is not labeled for keeping.
@@ -713,7 +739,7 @@ def run_experiment():
                     logger.info("Ditching the image.")
 
                     # Remove image.
-                    cleanup(logger)
+                    utils.cleanup()
                 
                 # Move the image to the experiment's toGround folder if we have gone through all the
                 # models in the pipeline and still have an image that is labeled to keep for downlinking.
@@ -730,8 +756,8 @@ def run_experiment():
                         logger.info("Compressing the raw image.")
                         
                         # Source and destination file paths for raw image file compression.
-                        file_raw_image = BASE_PATH + "/" + file_png.replace(".png", ".ims_rgb")
-                        file_raw_image_compressed = TOGROUND_PATH + "/" + applied_label + "/" + file_png.replace(".png", "." + cfg.raw_compression_type)
+                        file_raw_image = file_png.replace(".png", ".ims_rgb")
+                        file_raw_image_compressed = TOGROUND_PATH + "/" + applied_label + "/" + ntpath.basename(file_png).replace(".png", "." + cfg.raw_compression_type)
                         
                         # Compress the raw image file.
                         raw_compressor.compress(file_raw_image, file_raw_image_compressed)
@@ -746,15 +772,18 @@ def run_experiment():
         # Error handling here to not risk an unlikely infinite loop.
         try:
 
-            # Wait the configured sleep time before proceeding to the next image acquisition and labeling.
-            logger.info("Wait {T} seconds...".format(T=cfg.gen_interval))
-            time.sleep(cfg.gen_interval)
-            
             # Increment image acquisition labeling counter.
             counter = counter + 1
 
+            # Wait the configured sleep time before proceeding to the next image acquisition and labeling.
+            if counter < cfg.gen_number:
+                logger.info("Wait {T} seconds...".format(T=cfg.gen_interval))
+                time.sleep(cfg.gen_interval)
+            else:
+                logger.info("Image acquisition loop completed.")
+            
             # Keep looping until the target iteration count is reached.
-            if counter >= gen_number:
+            if counter >= cfg.gen_number:
                 done = True
             else:
                 done = False
@@ -792,14 +821,31 @@ def run_experiment():
 
         if tar_path is not None:
 
+
             # Raw packages can be huge so split the tar file and save smaller chunks in filestore's toGround folder.
             cmd_split_tar = 'split -b {B} {T} {P}'.format(\
                 B=cfg.downlink_compressed_split,\
                 T=tar_path,\
                 P=FILESTORE_TOGROUND_PATH + "/" + ntpath.basename(tar_path) + "_")
 
-            # Move the tar package to filestore's toGround folder.
+            # Move the split chunks of the tar package to filestore's toGround folder.
             os.system(cmd_split_tar)
+
+            # Get the number of files that the tar file was split into, i.e. the number of chunks.
+            chunk_counter = len(glob.glob1(FILESTORE_TOGROUND_PATH, ntpath.basename(tar_path) + "_*"))
+
+            # If the split only resulted in 1 chunk this means that no split was required the begin with. Rename the file as an unsplit tar file.
+            # FIXME: Don't split to begin with when this will be the case (compare the tar size to the split size prior to splitting)
+            if chunk_counter == 1:
+
+                cmd_rename_single_chunk = 'mv {S} {D}'.format(\
+                    S=FILESTORE_TOGROUND_PATH + "/" + ntpath.basename(tar_path) + "_aa",\
+                    D=FILESTORE_TOGROUND_PATH + "/" + ntpath.basename(tar_path))
+
+                os.system(cmd_rename_single_chunk)
+
+            # Delete the unsplit tar file in the experiment's toGround folder.
+            os.system('rm {T}'.format(T=tar_path))
 
 
 def setup_logger(name, log_file, formatter, level=logging.INFO):
