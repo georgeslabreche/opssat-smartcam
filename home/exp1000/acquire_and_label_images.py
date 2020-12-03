@@ -144,6 +144,8 @@ class AppConfig:
 
         self.gen_interval = self.config.getint('gen', 'gen_interval')
 
+        self.gen_interval_throttle = self.config.getint('gen', 'gen_interval_throttle')
+
         self.gen_number = self.config.getint('gen', 'gen_number')
         if self.gen_number <= 0:
            self. gen_number = 1
@@ -371,6 +373,14 @@ class Utils:
                 # Log that we are only tarring log files.
                 logger.info("No image(s) kept but tarring logs for downlink.")
 
+                # The destination tar file path for the packaged files.
+                tar_path = '{TG}/opssat_smartcam_{FILE_EXT}_exp{expID}_{D}.{TAR_EXT}'.format(\
+                    TG=TOGROUND_PATH,\
+                    FILE_EXT='logs',\
+                    expID=EXP_ID,\
+                    D=START_TIME.strftime("%Y%m%d_%H%M%S"),\
+                    TAR_EXT=tar_ext)
+
                 # Use tar to package log files into the filestore's toGround folder.
                 os.system('tar {TAR_O} {TAR_PATH} {L}/*.log --remove-files'.format(\
                     TAR_O=tar_options,\
@@ -394,17 +404,37 @@ class Utils:
             # Return None.
             return None
 
-    
-    def log_housekeeping_data(self):
-            
-        # Contents of the experiment's toGround folder
-        toGround_listing = subprocess.check_output(['ls', '-larth', TOGROUND_PATH]).decode('utf-8')
-        logger.info('Contents of {G}:'.format(G=TOGROUND_PATH))
-        logger.info(toGround_listing)
 
-        # toGround files
-        du_output = subprocess.check_output(['du', '-ah', TOGROUND_PATH]).decode('utf-8')
-        logger.info('toGround content:\n' + du_output) 
+    def split_and_move_tar(self, tar_path, split_bytes):
+        
+        # Thumbnail packages can be large when acquiring a lot of images.
+        # Split the tar file and save smaller chunks in filestore's toGround folder.
+        cmd_split_tar = 'split -b {B} {T} {P}'.format(\
+            B=split_bytes,\
+            T=tar_path,\
+            P=FILESTORE_TOGROUND_PATH + "/" + ntpath.basename(tar_path) + "_")
+
+        # Move the split chunks of the tar package to filestore's toGround folder.
+        os.system(cmd_split_tar)
+
+        # Get the number of files that the tar file was split into, i.e. the number of chunks.
+        chunk_counter = len(glob.glob1(FILESTORE_TOGROUND_PATH, ntpath.basename(tar_path) + "_*"))
+
+        # If the split only resulted in 1 chunk this means that no split was required the begin with. Rename the file as an unsplit tar file.
+        # FIXME: Don't split to begin with when this will be the case (compare the tar size to the split size prior to splitting)
+        if chunk_counter == 1:
+
+            cmd_rename_single_chunk = 'mv {S} {D}'.format(\
+                S=FILESTORE_TOGROUND_PATH + "/" + ntpath.basename(tar_path) + "_aa",\
+                D=FILESTORE_TOGROUND_PATH + "/" + ntpath.basename(tar_path))
+
+            os.system(cmd_rename_single_chunk)
+
+        # Delete the unsplit tar file in the experiment's toGround folder.
+        os.system('rm {T}'.format(T=tar_path))
+
+
+    def log_housekeeping_data(self):
 
         # Disk usage.
         df_output = subprocess.check_output(['df', '-h']).decode('utf-8')
@@ -413,7 +443,7 @@ class Utils:
 class HDCamera:
 
     #TODO: Remove for PROD
-    test_image_index = 1
+    test_image_index = 0
 
     def __init__(self, gains, exposure):
         self.gains = gains
@@ -636,6 +666,9 @@ def run_experiment():
     done = False
     counter = 0
 
+    # Default immage acquisition interval. Can be throttled when an acquired image is labeled to keep.
+    image_acquisition_period = cfg.gen_interval
+
     while not done:
         try:
 
@@ -758,16 +791,30 @@ def run_experiment():
                         # Source and destination file paths for raw image file compression.
                         file_raw_image = file_png.replace(".png", ".ims_rgb")
                         file_raw_image_compressed = TOGROUND_PATH + "/" + applied_label + "/" + ntpath.basename(file_png).replace(".png", "." + cfg.raw_compression_type)
-                        
+
+                        # Create a label directory in the experiment's toGround directory.
+                        # This is where the compressed raw image file will be moved to and how we categorize images based on their predicted labels.
+                        toGround_label_dir = TOGROUND_PATH + '/' + applied_label
+                        if not os.path.exists(toGround_label_dir):
+                            os.makedirs(toGround_label_dir)
+
                         # Compress the raw image file.
                         raw_compressor.compress(file_raw_image, file_raw_image_compressed)
 
                     # Move the images for keeping.
                     utils.move_images_for_keeping(cfg.raw_keep, cfg.png_keep, applied_label)
 
+                    # An image of interest has been acquired: throttle image acquisition frequency.
+                    image_acquisition_period =  cfg.gen_interval_throttle
+
+                else:
+
+                    # The acquired image is not of interest: fall back the default image acquisition frequency.
+                    image_acquisition_period = cfg.gen_interval
+
         except:
             # In case of exception just log the stack trace and proceed to the next image acquisition iteration.
-            logger.exception("Failed to acquire and classify image:")
+            logger.exception("Failed to acquire and classify image.")
 
         # Error handling here to not risk an unlikely infinite loop.
         try:
@@ -777,8 +824,8 @@ def run_experiment():
 
             # Wait the configured sleep time before proceeding to the next image acquisition and labeling.
             if counter < cfg.gen_number:
-                logger.info("Wait {T} seconds...".format(T=cfg.gen_interval))
-                time.sleep(cfg.gen_interval)
+                logger.info("Wait {T} seconds...".format(T=image_acquisition_period))
+                time.sleep(image_acquisition_period)
             else:
                 logger.info("Image acquisition loop completed.")
             
@@ -807,45 +854,14 @@ def run_experiment():
         tar_path = utils.package_files_for_downlinking("jpeg", cfg.downlink_log_if_no_images)
 
         if tar_path is not None:
-
-            cmd_move_tar = 'mv {T} {G}'.format(\
-                T=tar_path,\
-                G=FILESTORE_TOGROUND_PATH)
-
-            # Move the tar package to filestore's toGround folder.
-            os.system(cmd_move_tar)
+            utils.split_and_move_tar(tar_path, cfg.downlink_compressed_split)
 
     # Package compressed raws for downlinking.
     if cfg.downlink_compressed_raws and raw_compressor is not None:
         tar_path = utils.package_files_for_downlinking(cfg.raw_compression_type, cfg.downlink_log_if_no_images)
 
         if tar_path is not None:
-
-
-            # Raw packages can be huge so split the tar file and save smaller chunks in filestore's toGround folder.
-            cmd_split_tar = 'split -b {B} {T} {P}'.format(\
-                B=cfg.downlink_compressed_split,\
-                T=tar_path,\
-                P=FILESTORE_TOGROUND_PATH + "/" + ntpath.basename(tar_path) + "_")
-
-            # Move the split chunks of the tar package to filestore's toGround folder.
-            os.system(cmd_split_tar)
-
-            # Get the number of files that the tar file was split into, i.e. the number of chunks.
-            chunk_counter = len(glob.glob1(FILESTORE_TOGROUND_PATH, ntpath.basename(tar_path) + "_*"))
-
-            # If the split only resulted in 1 chunk this means that no split was required the begin with. Rename the file as an unsplit tar file.
-            # FIXME: Don't split to begin with when this will be the case (compare the tar size to the split size prior to splitting)
-            if chunk_counter == 1:
-
-                cmd_rename_single_chunk = 'mv {S} {D}'.format(\
-                    S=FILESTORE_TOGROUND_PATH + "/" + ntpath.basename(tar_path) + "_aa",\
-                    D=FILESTORE_TOGROUND_PATH + "/" + ntpath.basename(tar_path))
-
-                os.system(cmd_rename_single_chunk)
-
-            # Delete the unsplit tar file in the experiment's toGround folder.
-            os.system('rm {T}'.format(T=tar_path))
+            utils.split_and_move_tar(tar_path, cfg.downlink_compressed_split)
 
 
 def setup_logger(name, log_file, formatter, level=logging.INFO):
