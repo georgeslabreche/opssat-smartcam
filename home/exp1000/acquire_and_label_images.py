@@ -230,7 +230,9 @@ class ImageMetaData:
         'i',            # Inclination (deg).
         'raan',         # Right Ascension of ascending node (deg).
         'M_ref',        # Mean anomaly from perigee at reference epoch (deg).
-        'w_ref'         # Argument of perigee at reference epoch (deg).
+        'w_ref',        # Argument of perigee at reference epoch (deg).
+        'tle_ref_line1',# Reference TLE line 1.
+        'tle_ref_line2' # Reference TLE line 2.
     ]
 
 
@@ -239,16 +241,32 @@ class ImageMetaData:
         # The TLE.
         tle = None
 
-        # Lines from the TLE file.
-        lines = None
+        # Lines 1 and 2 from the TLE file.
+        tle_line1 = None
+        tle_line2 = None
 
         # Read lines from TLE file.
         try:
+            lines = None
+
             with open(tle_path, 'r') as tle_file:
                 lines = tle_file.readlines()
-            
-            if len(lines) >= 3:
-                self.tle = ephem.readtle(lines[0], lines[1], lines[2])
+
+                if lines is not None:
+                
+                    if len(lines) == 2:
+                        self.tle_line1 = lines[0].rstrip()
+                        self.tle_line2 = lines[1].rstrip()
+
+                        # Read the TLE.
+                        self.tle = ephem.readtle("OPS-SAT", self.tle_line1, self.tle_line2)
+
+                    elif len(lines) >= 3:
+                        self.tle_line1 = lines[1].rstrip()
+                        self.tle_line2 = lines[2].rstrip()
+
+                        # Read the TLE.
+                        self.tle = ephem.readtle(lines[0], self.tle_line1, self.tle_line2)
 
         except:
             self.tle = None
@@ -318,7 +336,9 @@ class ImageMetaData:
                     'i': self.tle._inc / degree,          # Inclination (deg).
                     'raan': self.tle._raan / degree,      # Right Ascension of ascending node (deg).
                     'M_ref': self.tle._M / degree,        # Mean anomaly from perigee at reference epoch (deg).
-                    'w_ref': self.tle._ap / degree        # Argument of perigee at reference epoch (deg).
+                    'w_ref': self.tle._ap / degree,       # Argument of perigee at reference epoch (deg).
+                    'tle_ref_line1': self.tle_line1,      # Reference TLE line 1.
+                    'tle_ref_line2': self.tle_line2       # Rererence TLE line 2.
                 }
 
                 # TLE computer success.
@@ -326,7 +346,7 @@ class ImageMetaData:
 
             except:
                 # Log exception.
-                logger.exception("Failed to collect metadata with available TLE at timestamp: " + str(timestamp))
+                logger.exception("Failed TLE computation with image timestamp: " + str(timestamp))
 
 
         # Computing some metadata with the available TLE failed.
@@ -345,6 +365,8 @@ class ImageMetaData:
                     'gain_b': self.gains[2],              # Camera gain setting for blue channel.
                     'exposure': self.exposure,            # Camera exposure setting (ms).
                     'acq_ts': timestamp,                  # Image acquisition timestamp.
+                    'tle_ref_line1': self.tle_line1,      # Reference TLE line 1.
+                    'tle_ref_line2': self.tle_line2       # Rererence TLE line 2.
                 }
 
             except:
@@ -636,7 +658,7 @@ class HDCamera:
 
     #TODO: Remove for PROD
     test_image_index = 0
-    filenames = ['img_msec_1536094668103_2', 'img_msec_1604996087319_2', 'img_msec_1605102070829_2', 'img_msec_1606250718231_2']
+    filenames = ['img_msec_1536094668103_2', 'img_msec_1604996087319_2', 'img_msec_1605102070829_2', 'img_msec_1607731147000_2']
 
     def __init__(self, gains, exposure):
         self.gains = gains
