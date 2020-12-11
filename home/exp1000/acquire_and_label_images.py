@@ -10,6 +10,10 @@ import datetime
 import json
 import operator
 import ntpath
+import re
+import csv
+import ephem
+from ephem import degree
 from pathlib import Path
 
 __author__ = 'Georges Labreche, Georges.Labreche@esa.int'
@@ -52,6 +56,12 @@ LOG_PATH = BASE_PATH + '/logs'
 # The experiment's log file path.
 LOG_FILE = LOG_PATH + '/opssat_smartcam_{D}.log'.format(D=START_TIME.strftime("%Y%m%d_%H%M%S"))
 
+# The experiment's metadata CSV file.
+METADATA_CSV_FILE = LOG_PATH + '/opssat_smartcam_metadata_{D}.csv'.format(D=START_TIME.strftime("%Y%m%d_%H%M%S"))
+
+# Image filename prefix.
+IMG_FILENAME_PREFIX = "img_msec_"
+
 # The logger.
 logger = None
 
@@ -93,6 +103,12 @@ class AppConfig:
         # Flag if the packaged raw images should be automatically moved to the filestore's toGround folder.
         # If yes, then the images will be downlinked during the next pass.
         self.downlink_compressed_raws = self.config.getboolean('conf', 'downlink_compressed_raws')
+
+        # Flag to collect image metadata into a CSV file.
+        self.collect_metadata = self.config.getboolean('conf', 'collect_metadata')
+
+        # TLE file path.
+        self.tle_path = self.config.get('conf', 'tle_path')
 
 
     def init_model_props(self, model_name):
@@ -185,12 +201,185 @@ class AppConfig:
         if self.jpeg_processing != 'pnmnorm' and self.jpeg_processing != 'pnmhisteq':
             self.jpeg_processing = 'none'
 
+
+class ImageMetaData:
+
+    tle = None
+
+    FIELD_NAMES = [
+        'filename',     # Filename without extension.
+        'label',        # Label applied to the image by the image classifier.
+        'confidence',   # Confidence level of th the applied label.
+        'keep',         # Whether the image was kept or not.
+        'gain_r',       # Camera gain setting for red channel.
+        'gain_g',       # Camera gain setting for green channel.
+        'gain_b',       # Camera gain setting for blue channel.
+        'exposure',     # Camera exposure setting (ms).
+        'acq_ts',       # Image acquisition timestamp.
+        'acq_dt',       # Image acquisition datetime.
+        'ref_dt',       # Reference epoch.
+        'tle_age',      # TLE age (days).
+        'lat',          # Latitude (deg).
+        'lng',          # Longitude (deg).
+        'h',            # Geocentric height above sea level (m).
+        'eclipse',      # Whether satellite is in Earth's shadow or not.
+        'e',            # Eccentricity.
+        'i',            # Inclination (deg).
+        'raan',         # Right Ascension of ascending node (deg).
+        'M_ref',        # Mean anomaly from perigee at reference epoch (deg).
+        'w_ref'         # Argument of perigee at reference epoch (deg).
+    ]
+
+
+    def __init__(self, tle_path, gains, exposure):
+        
+        # The TLE.
+        tle = None
+
+        # Lines from the TLE file.
+        lines = None
+
+        # Read lines from TLE file.
+        try:
+            with open(tle_path, 'r') as tle_file:
+                lines = tle_file.readlines()
+            
+            if len(lines) >= 3:
+                self.tle = ephem.readtle(lines[0], lines[1], lines[2])
+
+        except:
+            self.tle = None
+            logger.error("Failed to read TLE file: " + tle_path)
+
+        self.gains = gains
+        self.exposure = exposure
+
+        # The list that will contain metadata dictionary entries.
+        self.metadata_list = []
+
+
+    def collect_metadata(self, filename_png, label, confidence, keep):
+        """Collect metadata for the image acquired at the given timestamp."""
+
+        # Track if tle compuation is successful or not.
+        # If not successful then fallback to minimum metadata collection that does not depend on TLE.
+        tle_compute_success = False
+
+        # Image acquisition timestamp.
+        timestamp = None
+        
+        # The dictionary that will contain the image's computed metadata.
+        metadata = {}
+
+        # The filename without the path and without the extension
+        filename = filename_png.replace(BASE_PATH + "/", "").replace(".png", "")
+
+        try:
+            # Extract timestamp from filename.
+            timestamp = int(re.match(IMG_FILENAME_PREFIX + "(\d+)_\d+", filename).group(1))
+        
+        except:
+            logger.exception("Failed to extract timestamp from the image filename.")
+
+        if timestamp is not None and self.tle is not None:
+            try: 
+
+                # Image acquisition datetime.
+                d = datetime.datetime.utcfromtimestamp(timestamp / 1000.0)
+
+                # Image acquisition epheme datetime object.
+                d_ephem = ephem.Date(d)
+
+                # Compute based on reference TLE and acquisition datetime.
+                self.tle.compute(d_ephem)
+
+                # Build the metadata dictionary for the acquired image.
+                metadata = {
+                    'filename': filename,                 # Filename without extension.
+                    'label': label,                       # Label applied to the image by the image classifier.
+                    'confidence': confidence,             # Confidence level of th the applied label.
+                    'keep': keep,                         # Whether the image was kept or not.
+                    'gain_r': self.gains[0],              # Camera gain setting for red channel.
+                    'gain_g': self.gains[1],              # Camera gain setting for green channel.
+                    'gain_b': self.gains[2],              # Camera gain setting for blue channel.
+                    'exposure': self.exposure,            # Camera exposure setting (ms).
+                    'acq_ts': timestamp,                  # Image acquisition timestamp.
+                    'acq_dt': str(d_ephem),               # Image acquisition datetime.
+                    'ref_dt': str(self.tle._epoch),       # Reference epoch.
+                    'tle_age': d_ephem - self.tle._epoch, # TLE age (days).
+                    'lat': self.tle.sublat / degree,      # Latitude (deg).
+                    'lng': self.tle.sublong / degree,     # Longitude (deg).
+                    'h': self.tle.elevation,              # Geocentric height above sea level (m).
+                    'eclipse': self.tle.eclipsed,         # Whether satellite is in Earth's shadow or not.
+                    'e': self.tle._e,                     # Eccentricity.
+                    'i': self.tle._inc / degree,          # Inclination (deg).
+                    'raan': self.tle._raan / degree,      # Right Ascension of ascending node (deg).
+                    'M_ref': self.tle._M / degree,        # Mean anomaly from perigee at reference epoch (deg).
+                    'w_ref': self.tle._ap / degree        # Argument of perigee at reference epoch (deg).
+                }
+
+                # TLE computer success.
+                tle_compute_success = True
+
+            except:
+                # Log exception.
+                logger.exception("Failed to collect metadata with available TLE at timestamp: " + str(timestamp))
+
+
+        # Computing some metadata with the available TLE failed.
+        # Try collecting basic metadata that does not depend on TLE.
+        if not tle_compute_success:
+
+            try:
+                # Limited metadata in case of TLE error.
+                metadata = {
+                    'filename': filename,                 # Filename without extension.
+                    'label': label,                       # Label applied to the image by the image classifier.
+                    'confidence': confidence,             # Confidence level of th the applied label.
+                    'keep': keep,                         # Whether the image was kept or not.
+                    'gain_r': self.gains[0],              # Camera gain setting for red channel.
+                    'gain_g': self.gains[1],              # Camera gain setting for green channel.
+                    'gain_b': self.gains[2],              # Camera gain setting for blue channel.
+                    'exposure': self.exposure,            # Camera exposure setting (ms).
+                    'acq_ts': timestamp,                  # Image acquisition timestamp.
+                }
+
+            except:
+                # No reason for this to occur but here nevertheless, just in case.
+                logger.exception("Failed to collect metadata.")
+
+        # Append metadata to the dictionary. 
+        # Will be written into a CSV file at the end of the image acquisition loop.
+        if len(metadata) > 0:
+            self.metadata_list.append(metadata)
+        
+
+    def write_metadata(self, csv_filename):
+        """Write collected metadata into a CSV file."""
+
+        if len(self.metadata_list) > 0:
+
+            # Open CSV file and start writing image metadata row for each image acquired.
+            with open(csv_filename, 'w', newline='') as csv_file:
+                writer = csv.DictWriter(csv_file, fieldnames=self.FIELD_NAMES)
+
+                # Write header.
+                writer.writeheader()
+
+                # Write image metadata row.
+                for metadata in self.metadata_list:
+                    writer.writerow(metadata)
+
+        else:
+            logger.info("No metadata data was collected.")
+
+
 class Fapec:
 
     bin_path = FAPEC_BIN_PATH
 
     def __init__(self, chunk, threads, dtype, band, losses, meaningful_bits, lev):
-        """Iniitialize the Fapec compression class."""
+        """Initialize the Fapec compression class."""
 
         self.chunk = chunk
         self.threads = threads
@@ -358,7 +547,7 @@ class Utils:
                 logger.info("Tarring {T} file(s) for downlink.".format(T=image_count))
 
                 # Use tar to package image and log files into the filestore's toGround folder.
-                os.system('tar {TAR_O} {TAR_PATH} {G}/**/*.{FILE_EXT} {L}/*.log --remove-files'.format(\
+                os.system('tar {TAR_O} {TAR_PATH} {G}/**/*.{FILE_EXT} {L}/*.log {L}/*.csv --remove-files'.format(\
                     TAR_O=tar_options,\
                     TAR_PATH=tar_path,\
                     G=TOGROUND_PATH,\
@@ -382,7 +571,7 @@ class Utils:
                     TAR_EXT=tar_ext)
 
                 # Use tar to package log files into the filestore's toGround folder.
-                os.system('tar {TAR_O} {TAR_PATH} {L}/*.log --remove-files'.format(\
+                os.system('tar {TAR_O} {TAR_PATH} {L}/*.log {L}/*.csv --remove-files'.format(\
                     TAR_O=tar_options,\
                     TAR_PATH=tar_path,\
                     L=LOG_PATH))
@@ -444,6 +633,7 @@ class HDCamera:
 
     #TODO: Remove for PROD
     test_image_index = 0
+    filenames = ['img_msec_1536094668103_2', 'img_msec_1604996087319_2', 'img_msec_1605102070829_2', 'img_msec_1606250718231_2']
 
     def __init__(self, gains, exposure):
         self.gains = gains
@@ -451,7 +641,7 @@ class HDCamera:
 
     def acquire_image(self):
         # FIXME: remove for deployment
-        img_file_path = BASE_PATH + "/earth_" + str(self.test_image_index) + ".png"
+        img_file_path = BASE_PATH + "/" + self.filenames[self.test_image_index] + ".png"
         self.test_image_index = self.test_image_index + 1
         return img_file_path 
 
@@ -539,6 +729,7 @@ class ImageEditor:
 
 
     def create_input_image(self, png_src_filename, jpeg_dest_filename, input_height, input_width, jpeg_scaling, jpeg_quality, jpeg_processing):
+        """Create image file as an input to the image classifier."""
 
         # Build the command string to create the image input for the image classification program.
         # FIXME create input jpeg directly from the thumbnail jpeg instead of from the png. Maye require an ipk to install jpegtopnm.
@@ -640,6 +831,7 @@ def run_experiment():
     camera = HDCamera(cfg.gen_gains, cfg.gen_exposure)
     img_editor = ImageEditor()
     img_classifier = ImageClassifier()
+    img_metadata = ImageMetaData(cfg.tle_path, cfg.gen_gains, cfg.gen_exposure)
     
     # Instanciate a compressor object if a compression algorithm was specified and configured in the config.ini.
     raw_compressor = None
@@ -670,6 +862,7 @@ def run_experiment():
     image_acquisition_period = cfg.gen_interval
 
     while not done:
+
         try:
 
             # Flag indicating if we should skip the image acquisition and labeling process in case of an encountered error.
@@ -688,7 +881,7 @@ def run_experiment():
                 # Check if image acquisition was OK.
                 success = True if file_png is not None else False
             
-            # If we have successfully acquired a png file then the jpeg thumbnail if we want to downlink thumbnails.
+            # If we have successfully acquired a png file then create the  jpeg thumbnail if we want to downlink thumbnails.
             if success and cfg.downlink_thumbnails:
                 # The thumbnail filename.
                 file_thumbnail = file_png.replace(".png", "_thumbnail.jpeg")
@@ -700,14 +893,14 @@ def run_experiment():
             # Proceed if we have successfully create the thumbnail image.
             if success:
 
-                # By default, assume the image that will be classified will not be kept.
-                keep_image = False
-
                 # Set the first image classification model to apply.
                 next_model = cfg.entry_point_model
 
                 # Keep applying follow up models to the kept image as long as images are labeled to be kept and follow up models are defined.
                 while next_model is not None:
+
+                    # Assuming the image will not be kept until we get the final result from the last model in the pipeline.
+                    keep_image = False
 
                     # Init the model configuration properties for the current modell
                     success = cfg.init_model_props(next_model)
@@ -742,6 +935,8 @@ def run_experiment():
 
                         # Break out of the loop if the image classification program returns an error.
                         if predictions_dict is None:
+
+                            # Break out of the loop.
                             break
 
                         # Fetch image classification result if the image classification program doesn't return an error code.
@@ -750,8 +945,11 @@ def run_experiment():
                             # Get label with highest prediction confidence.
                             applied_label = max(predictions_dict.items(), key=operator.itemgetter(1))[0]
                             
+                            # Get the confidence value of the label with the higher confidence.
+                            applied_label_confidence = float(predictions_dict[applied_label])
+
                             # If the image classification is not greater or equal to a certain threshold then discard it.
-                            if float(predictions_dict[applied_label]) < float(cfg.confidence_threshold):
+                            if applied_label_confidence < float(cfg.confidence_threshold):
                                 logger.info("Insufficient prediction confidence level to label the image (the threshold is currently set to " + cfg.confidence_threshold + ").")
 
                                 # Break out of the loop if the prediction confidence is not high enough and we cannot proceed in labeling the image.
@@ -765,18 +963,27 @@ def run_experiment():
                                 # If next_model is not None then proceed to another iteration of this model pipeline loop.
                                 keep_image, next_model = utils.get_image_keep_status_and_next_model(applied_label, cfg.labels_keep)
 
+
                 # We have exited the model pipeline loop.
+                
+                # Collect image metadata. Even for images that will not be kept.
+                if predictions_dict is not None and cfg.collect_metadata:
+                    img_metadata.collect_metadata(file_png, applied_label, applied_label_confidence, keep_image)
+
                 # Remove the image if it is not labeled for keeping.
                 if not keep_image:
                     # Log image removal.
                     logger.info("Ditching the image.")
+
+                    # The acquired image is not of interest: fall back the default image acquisition frequency.
+                    image_acquisition_period = cfg.gen_interval
 
                     # Remove image.
                     utils.cleanup()
                 
                 # Move the image to the experiment's toGround folder if we have gone through all the
                 # models in the pipeline and still have an image that is labeled to keep for downlinking.
-                if keep_image:
+                else:
 
                     # The current image has been classified with a label of interest.
                     # Keep the image but only the types as per what is configured in the the config.ini file.
@@ -806,11 +1013,6 @@ def run_experiment():
 
                     # An image of interest has been acquired: throttle image acquisition frequency.
                     image_acquisition_period =  cfg.gen_interval_throttle
-
-                else:
-
-                    # The acquired image is not of interest: fall back the default image acquisition frequency.
-                    image_acquisition_period = cfg.gen_interval
 
         except:
             # In case of exception just log the stack trace and proceed to the next image acquisition iteration.
@@ -846,6 +1048,10 @@ def run_experiment():
 
     # Log some housekeeping data.
     utils.log_housekeeping_data()
+
+    # Write metadata CSV file.
+    if cfg.collect_metadata:
+        img_metadata.write_metadata(METADATA_CSV_FILE)
 
     # Tar the images and the log files for downlinking.
 
