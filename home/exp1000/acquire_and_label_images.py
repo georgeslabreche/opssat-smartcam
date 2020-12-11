@@ -110,6 +110,9 @@ class AppConfig:
         # TLE file path.
         self.tle_path = self.config.get('conf', 'tle_path')
 
+        # Size quote for the experiment's toGround folder.
+        self.quota_toGround = self.config.getint('conf', 'quota_toGround')
+
 
     def init_model_props(self, model_name):
         """Fetch model configuration parameters."""
@@ -832,35 +835,53 @@ def run_experiment():
     img_editor = ImageEditor()
     img_classifier = ImageClassifier()
     img_metadata = ImageMetaData(cfg.tle_path, cfg.gen_gains, cfg.gen_exposure)
-    
-    # Instanciate a compressor object if a compression algorithm was specified and configured in the config.ini.
-    raw_compressor = None
-
-    # Raw image file compression will only be applied if we enable compressed raw downlinking.
-    if cfg.downlink_compressed_raws and cfg.raw_compression_type == 'fapec' and cfg.init_compression_fapec_props() is True:
-
-        # Instanciate compression object that will be used to compress the raw image files.
-        raw_compressor = Fapec(cfg.compression_fapec_chunk,\
-            cfg.compression_fapec_threads,\
-            cfg.compression_fapec_dtype,\
-            cfg.compression_fapec_band,\
-            cfg.compression_fapec_losses,\
-            cfg.compression_fapec_meaningful_bits,\
-            cfg.compression_fapec_lev)
-
-        logger.info("Raw image file compression enabled: " + cfg.raw_compression_type + ".")
-
-    else:
-        # No compression will be applied to the raw image files.
-        logger.info("Raw image file compression disabled.")
 
     # Flag and counter to keep track.
     done = False
     counter = 0
 
+    # Check if the experiment's toGround folder is below a configured quota before proceeding with the experiment.
+    try:
+        toGround_size = int(subprocess.check_output(['du', '-s', TOGROUND_PATH]).decode('utf-8').split()[0])
+        done = True if toGround_size >= cfg.quota_toGround else False
+
+        if done:
+            logger.info("Exiting: the experiment's toGround folder is greater than the configured quota: {TG} KB > {Q} KB.".format(\
+                TG=toGround_size,\
+                Q=cfg.quota_toGround))
+
+    except:
+        logger.exception("Exiting: failed to check disk space use of the experiment's toGround folder.")
+        done = False
+    
+    # Instanciate a compressor object if a compression algorithm was specified and configured in the config.ini.
+    raw_compressor = None
+
+    # Proceed with instanciate the compressor object in case the is not marked to stop.
+    if not done:
+
+        # Raw image file compression will only be applied if we enable compressed raw downlinking.
+        if cfg.downlink_compressed_raws and cfg.raw_compression_type == 'fapec' and cfg.init_compression_fapec_props() is True:
+
+            # Instanciate compression object that will be used to compress the raw image files.
+            raw_compressor = Fapec(cfg.compression_fapec_chunk,\
+                cfg.compression_fapec_threads,\
+                cfg.compression_fapec_dtype,\
+                cfg.compression_fapec_band,\
+                cfg.compression_fapec_losses,\
+                cfg.compression_fapec_meaningful_bits,\
+                cfg.compression_fapec_lev)
+
+            logger.info("Raw image file compression enabled: " + cfg.raw_compression_type + ".")
+
+        else:
+            # No compression will be applied to the raw image files.
+            logger.info("Raw image file compression disabled.")
+
     # Default immage acquisition interval. Can be throttled when an acquired image is labeled to keep.
     image_acquisition_period = cfg.gen_interval
 
+    # Image acquisition loop.
     while not done:
 
         try:
