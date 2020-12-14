@@ -80,3 +80,24 @@ Consult the app's config.ini file for the default configuration values.
 
 #### Others
 No other image compression algorithms are currently supported.
+
+## Image Metadata
+A CSV file is created and downlinked when *collect_metadata* is set to `yes`. Each row contains metadata for an image acquired during the SmartCam app's execution. Metadata for images that were discarded are also included. The following information is collected:
+
+- *filename* - name of the image file.
+- *label* - final label applied by the image classification pipeline.
+- *confidence* - confidence level of the applied label.
+- *keep* - whether the image was kept or not based on the applied label.
+- *gain_r* - red gain value set for the camera's RGB gain setting.
+- *gain_g* - green gain value set for the camera's RGB gain setting.
+- *gain_b* - blue gain value set for the camera's RGB gain setting.
+- *exposure* - camera exposure setting, in milliseconds.
+- *acq_ts* - image acquisition timestamp, in milliseconds.
+- *acq_dt* - image acquisition datetime.
+- *ref_dt* - TLE reference datetime. The on-board TLE file is used to project the latitude and longitude of the spacecraft's groundtrack location, as well as its altitude, based on the image acquisition's timestamp.
+- *tle_age* - age of the reference TLE.
+- *lat* - latitude of the spacecraft's groundtrack location.
+- *lng* - longitude of the spacecraft's groundtrack location .
+- *h* - altitude of the spacecraft's orbit, i.e. height above Earth's surface.
+- *tle_ref_line1* - line 1 of the reference TLE.
+- *tle_ref_line2* - line 2 of the reference TLE.
