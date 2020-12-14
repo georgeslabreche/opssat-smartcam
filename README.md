@@ -18,7 +18,7 @@ The desired app configurations are set in the config.ini file. An acquired image
 
 ### Building an image classification pipeline
 1. Each model consists of a .tflite and a labels.txt file located in a model folder under `/home/exp1000/models`, e.g: `/home/exp1000/models/default` and `/home/exp1000/models/cloud_detection`.
-2. Create a config.ini section for each model. Prefix the section name with `model_`, e.g. `\[model_default\]` and `\[model_cloud_detection\]`.
+2. Create a config.ini section for each model. Prefix the section name with `model_`, e.g. `[model_default]` and `[model_cloud_detection]`.
 3. Each model's config section will specify which label to keep via the *labels_keep* property. For instance, if the default model can label an image as either "earth", "edge", or "bad", but we only want to keep images classified with the first two labels, then `labels_keep = ["earth", "edge"]`.
 4. If another image classification needs to follow up after an image was previously classified with a certain label, then the follow up model name can be appended following a colon. E.g. `["earth:cloud_detection", "edge"]`.
 5. The entry point model that will be the first image classification applid in the model pipeline is specified in the config.ini's *entry_point_model* property, e.g. `entry_point_model = default`. 
@@ -61,7 +61,7 @@ Consult the app's config.ini file for the default configuration values.
 - *input_std* - standard deviation of the image input.
 - *confidence_threshold* - minimum confidence level required to apply the label predicted by the neural network model.
 
-### Compression
+### Raw Image Compression
 #### Fapec
 - *chunk* - chunk size.
 - *threads* - number of threads.
@@ -71,5 +71,7 @@ Consult the app's config.ini file for the default configuration values.
 - *meaningful_bits* - meaningful bits.
 - *lev* - inter-band decorrelation adaptiveness.
 
+#### Others
+No other image compression algorithms are currently supported.
 ## Running your own model on-board OPS-SAT
 Join the [OPS-SAT community platform](https://opssat1.esoc.esa.int/) and apply to become an experimenter, it's quick and easy!
