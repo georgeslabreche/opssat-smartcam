@@ -225,12 +225,6 @@ class ImageMetaData:
         'lat',          # Latitude (deg).
         'lng',          # Longitude (deg).
         'h',            # Geocentric height above sea level (m).
-        'eclipse',      # Whether satellite is in Earth's shadow or not.
-        'e',            # Eccentricity.
-        'i',            # Inclination (deg).
-        'raan',         # Right Ascension of ascending node (deg).
-        'M_ref',        # Mean anomaly from perigee at reference epoch (deg).
-        'w_ref',        # Argument of perigee at reference epoch (deg).
         'tle_ref_line1',# Reference TLE line 1.
         'tle_ref_line2' # Reference TLE line 2.
     ]
@@ -331,12 +325,6 @@ class ImageMetaData:
                     'lat': self.tle.sublat / degree,      # Latitude (deg).
                     'lng': self.tle.sublong / degree,     # Longitude (deg).
                     'h': self.tle.elevation,              # Geocentric height above sea level (m).
-                    'eclipse': self.tle.eclipsed,         # Whether satellite is in Earth's shadow or not.
-                    'e': self.tle._e,                     # Eccentricity.
-                    'i': self.tle._inc / degree,          # Inclination (deg).
-                    'raan': self.tle._raan / degree,      # Right Ascension of ascending node (deg).
-                    'M_ref': self.tle._M / degree,        # Mean anomaly from perigee at reference epoch (deg).
-                    'w_ref': self.tle._ap / degree,       # Argument of perigee at reference epoch (deg).
                     'tle_ref_line1': self.tle_line1,      # Reference TLE line 1.
                     'tle_ref_line2': self.tle_line2       # Rererence TLE line 2.
                 }
