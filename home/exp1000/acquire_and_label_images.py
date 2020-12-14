@@ -22,9 +22,7 @@ __author__ = 'Georges Labreche, Georges.Labreche@esa.int'
 EXP_ID = 1000
 
 # The experiment's base path.
-# TODO: Uncomment for deployment. 
-#BASE_PATH = '/home/exp' + str(EXP_ID)
-BASE_PATH = '/home/georges/dev/SmartCamLuvsU/home/exp1000'
+BASE_PATH = '/home/exp' + str(EXP_ID)
 
 # The experiment's config file path.
 CONFIG_FILE = BASE_PATH + '/config.ini'
@@ -33,16 +31,13 @@ CONFIG_FILE = BASE_PATH + '/config.ini'
 TOGROUND_PATH = BASE_PATH + '/toGround'
 
 # The filestore's toGround folder path.
-# TODO: Uncomment for deployment. 
-# FILESTORE_TOGROUND_PATH = '/home/root/esoc-apps/fms/filestore/toGround'
-FILESTORE_TOGROUND_PATH = '/home/georges/dev/toGround'
+FILESTORE_TOGROUND_PATH = '/home/root/esoc-apps/fms/filestore/toGround'
 
 # Image classifier program file path.
 IMAGE_CLASSIFIER_BIN_PATH = BASE_PATH + '/bin/tensorflow/lite/c/image_classifier'
 
-# TODO: Uncomment for deployment. 
-# FAPEC_BIN_PATH = '/home/exp100/fapec'
-FAPEC_BIN_PATH = BASE_PATH + '/test/fapec'
+# The fapce compression binary file path.
+FAPEC_BIN_PATH = '/home/exp100/fapec'
 
 # The supported compression types.
 SUPPORTED_COMPRESSION_TYPES = ['fapec']
@@ -461,6 +456,7 @@ class Utils:
 
 
     def get_image_keep_status_and_next_model(self, applied_label, labels_keep):
+        """Determine whether or not the image should be kept as well as the next model that should be applied."""
         
         # Check if the labeled image should be ditched or kept based on what is set in the config.ini file.
         for lbl_k in labels_keep:
@@ -503,6 +499,7 @@ class Utils:
 
 
     def move_images_for_keeping(self, raw_keep, png_keep, applied_label):
+        """Move the images to keep into to experiment's toGround folder."""
 
         # Remove the raw image file if it is not flagged to be kept.
         if not raw_keep:
@@ -532,6 +529,7 @@ class Utils:
 
 
     def package_files_for_downlinking(self, file_ext, downlink_log_if_no_images):
+        """Package the files for downlinking."""
         try:
 
             # Don't use gzip if files are already a compression file type.
@@ -608,6 +606,7 @@ class Utils:
 
 
     def split_and_move_tar(self, tar_path, split_bytes):
+        """Split packaged files for downlink and move the chunks to the filestore's toGround folder."""
         
         # Thumbnail packages can be large when acquiring a lot of images.
         # Split the tar file and save smaller chunks in filestore's toGround folder.
@@ -637,6 +636,7 @@ class Utils:
 
 
     def log_housekeeping_data(self):
+        """Log some housekeeping data, i.e. the available disk space."""
 
         # Disk usage.
         df_output = subprocess.check_output(['df', '-h']).decode('utf-8')
@@ -644,21 +644,12 @@ class Utils:
 
 class HDCamera:
 
-    #TODO: Remove for PROD
-    test_image_index = 0
-    filenames = ['img_msec_1536094668103_2', 'img_msec_1604996087319_2', 'img_msec_1605102070829_2', 'img_msec_1607731147000_2']
-
     def __init__(self, gains, exposure):
         self.gains = gains
         self.exposure = exposure
 
     def acquire_image(self):
-        # FIXME: remove for deployment
-        img_file_path = BASE_PATH + "/" + self.filenames[self.test_image_index] + ".png"
-        self.test_image_index = self.test_image_index + 1
-        return img_file_path 
-
-        '''
+        """Acquire and image with the on-board camera."""
 
         # Build the image acquisition execution command string.
         cmd_image_acquisition = 'ims100_testapp -R {R} -G {G} -B {B} -c /dev/ttyACM0 -m /dev/sda -v 0 -n 1 -p -e {E} >> {L} 2>&1'.format(\
@@ -697,12 +688,12 @@ class HDCamera:
 
         # Return error status
         return file_png
-        '''
 
 
 class ImageEditor:
 
     def create_thumbnail(self, png_src_filename, jpeg_dest_filename, jpeg_scaling, jpeg_quality, jpeg_processing):
+        """Create a thumbnail image."""
 
         # Build the thumbnail creation command string.
         if jpeg_processing != 'none':
@@ -790,14 +781,15 @@ class ImageEditor:
 
 class ImageClassifier:
     
-    def label_image(self, image_filename, model_tflite_filenmae, labels_filename, image_height, image_width, image_mean, image_std):
+    def label_image(self, image_filename, model_tflite_filename, labels_filename, image_height, image_width, image_mean, image_std):
+        """Label an image using the image classifier with the given model and labels files."""
 
         try:
             # Build the image labeling command.
             cmd_label_image = '{P} {I} {M} {L} {height} {width} {mean} {std}'.format(\
                 P=IMAGE_CLASSIFIER_BIN_PATH,\
                 I=image_filename,\
-                M=model_tflite_filenmae,\
+                M=model_tflite_filename,\
                 L=labels_filename,\
                 height=image_height,\
                 width=image_width,\
@@ -900,9 +892,8 @@ def run_experiment():
             success = True
 
             # Cleanup any files that may have been left over from a previous run that may have terminated ungracefully.
-            #TODO: Remove comment for Prod
-            #if utils.cleanup() < 0:
-            #    success = False
+            if utils.cleanup() < 0:
+                success = False
 
             # If experiment's root directory is clean, i.e. no images left over from a previous image acquisition, then acquire a new image.
             if success:
@@ -918,8 +909,7 @@ def run_experiment():
                 file_thumbnail = file_png.replace(".png", "_thumbnail.jpeg")
                 
                 # Create the thumbnail.
-                #TODO: Uncomment for PROD.
-                #success = img_editor.create_thumbnail(file_png, file_thumbnail, cfg.jpeg_scaling, cfg.jpeg_quality, cfg.jpeg_processing)
+                success = img_editor.create_thumbnail(file_png, file_thumbnail, cfg.jpeg_scaling, cfg.jpeg_quality, cfg.jpeg_processing)
 
             # Proceed if we have successfully create the thumbnail image.
             if success:
@@ -949,13 +939,10 @@ def run_experiment():
                     file_image_input = file_png.replace(".png", "_input.jpeg")
 
                     # Create the image that will be used as the input for the neural network image classification model.
-                    #TODO: Uncomment for PROD.
-                    """
                     success = image_editor.create_input_image(\
                         file_png, file_image_input,\
                         cfg.input_height, cfg.input_width,\
                         cfg.jpeg_scaling, cfg.jpeg_quality, cfg.jpeg_processing)
-                    """
 
                     # Input image for the model was successfully created, proceed with running the image classification program.
                     if success:
