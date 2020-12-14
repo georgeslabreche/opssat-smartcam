@@ -1,12 +1,19 @@
 # OPS-SAT SmartCam
-An image acquisition and classification app for the European Space Agency's [OPS-SAT](https://www.esa.int/Enabling_Support/Operations/OPS-SAT_your_flying_laboratory) spacecraft.
+An image acquisition and classification app for the European Space Agency's [OPS-SAT](https://www.esa.int/Enabling_Support/Operations/OPS-SAT_your_flying_laboratory) spacecraft. An acquired image can go through a pipeline of multiple image classification models that are applied in a sequence.
 
 ## Neural Networks
 The app can apply any .tflite neural network image classification model file trained with TensorFlow. The default model labels the images acquired by the spacecraft's camera as either "earth", "edge", or "bad". 
 
+## Contribute
+The SmartCam's image classification program [uses the TensorFlow Lite C API for model inference](https://github.com/georgeslabreche/tensorflow-opssat-smartcam). Tensorflow Lite inference is thus available to any experimenter without being restricted to image classification. Ways to contribute:
+- Train an model that can be plugged into the SmartCam's image classification pipeline.
+- Develop your own experiment that is unrelated to SmartCam and image classification but makes use of the SmartCam's underlying Tensorflow Lite inference program.
+- OPS-SAT is your flying laboratory: come up with your own experiment that is unrelated to the SmartCam app or the AI framework that powers it.
+
+Join the [OPS-SAT community platform](https://opssat1.esoc.esa.int/) and apply to become an experimenter, it's quick and easy! 
 ## How does it work?
 ### Overview
-The desired app configurations are set in the config.ini file. An acquired image can go through a pipeline of multiple image classification models that are applied in a sequence. The gist of the application's logic is as follow:
+The desired app configurations are set in the config.ini file. The gist of the application's logic is as follow:
 
 1. Acquires ims_rgb (raw) and png image files using the spacecraft's HD camera.
 2. Creates a thumbnail jpeg image.
@@ -73,5 +80,3 @@ Consult the app's config.ini file for the default configuration values.
 
 #### Others
 No other image compression algorithms are currently supported.
-## Running your own model on-board OPS-SAT
-Join the [OPS-SAT community platform](https://opssat1.esoc.esa.int/) and apply to become an experimenter, it's quick and easy!
