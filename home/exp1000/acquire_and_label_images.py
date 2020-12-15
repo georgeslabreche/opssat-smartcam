@@ -286,7 +286,7 @@ class ImageMetaData:
 
         try:
             # Extract timestamp from filename.
-            timestamp = int(re.match(IMG_FILENAME_PREFIX + "(\d+)_\d+", filename).group(1))
+            timestamp = int(re.match(".*" + IMG_FILENAME_PREFIX + "(\d+)_\d+", filename).group(1))
         
         except:
             logger.exception("Failed to extract timestamp from the image filename.")
@@ -761,7 +761,7 @@ class ImageEditor:
         os.system(cmd_create_input_image)
 
         # Check that the image input exists.
-        if not os.path.isfile(file_image_input):
+        if not os.path.isfile(jpeg_dest_filename):
             logger.error(\
                 "Failed to generate {X}x{Y} image input for the image classification model.".format(\
                     X=input_width,
@@ -770,7 +770,7 @@ class ImageEditor:
             return False
 
         # An error in executing the pamscale command can produce an empty image input file.
-        if Path(file_image_input).stat().st_size == 0:
+        if Path(jpeg_dest_filename).stat().st_size == 0:
             logger.error("Generated image input is an empty file (0 KB).")
             
             return False
@@ -939,7 +939,7 @@ def run_experiment():
                     file_image_input = file_png.replace(".png", "_input.jpeg")
 
                     # Create the image that will be used as the input for the neural network image classification model.
-                    success = image_editor.create_input_image(\
+                    success = img_editor.create_input_image(\
                         file_png, file_image_input,\
                         cfg.input_height, cfg.input_width,\
                         cfg.jpeg_scaling, cfg.jpeg_quality, cfg.jpeg_processing)
