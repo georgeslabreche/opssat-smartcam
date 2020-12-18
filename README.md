@@ -1,36 +1,70 @@
 # OPS-SAT SmartCam
-An image acquisition and classification app for the European Space Agency's [OPS-SAT](https://www.esa.int/Enabling_Support/Operations/OPS-SAT_your_flying_laboratory) spacecraft.
+An image acquisition and classification app for the European Space Agency's [OPS-SAT](https://www.esa.int/Enabling_Support/Operations/OPS-SAT_your_flying_laboratory) spacecraft. An acquired image can go through a pipeline of multiple image classification models that are applied in a sequence.
 
-## Background
-The SmartCam app enables autonomous on-board decision making in downlink prioritization. It uses artificial intelligence (AI) to identify images of interest as soon as they are captured by the spacecraft's camera. During its commissioning phase, OPS-SAT downlinked over 4,500 thumbnail images. These pictures were used as training data for [TensorFlow Lite](https://www.tensorflow.org/lite) to develop an image classification convolutional neural network (CNN) model. 
+1. [Neural Networks](https://github.com/georgeslabreche/opssat-smartcam#neural-networks)
+2. [Contribute](https://github.com/georgeslabreche/opssat-smartcam#contribute)
+3. [How does it work?](https://github.com/georgeslabreche/opssat-smartcam#how-does-it-work)
+4. [Configuration](https://github.com/georgeslabreche/opssat-smartcam#configuration)
+5. [Image Metadata](https://github.com/georgeslabreche/opssat-smartcam#image-metadata)
 
-The TensorFlow Lite inference API is meant for machine learning (ML) models on mobile and IoT devices but OPS-SAT's powerful on-board computer makes it possible to run it in space. Since image classification is a common problem, the model trained for the SmartCam app benefitted from [transfer Learning (TL)](https://www.tensorflow.org/tutorials/images/transfer_learning) to greatly reduce the complexity, time, and processing power required to train the model.
+## 1. Neural Networks
+The app can apply any .tflite neural network image classification model file trained with TensorFlow. The default model labels the images acquired by the spacecraft's camera as either "earth", "edge", or "bad". The SmartCam's image classification program [uses the TensorFlow Lite C API for model inference](https://github.com/georgeslabreche/tensorflow-opssat-smartcam). Tensorflow Lite inference is thus available to any experimenter without being restricted to image classification. 
 
-The app was developed with accessibility and re-useability in mind; anyone can uplink their own TensorFlow Lite image classification model for the SmartCam to use without having to develop their own app. A future version will allow multiple models to be chained into an image classification pipeline, with branching options, opening exciting possibilities for crowdsourced space segment AI operations.
+## 2. Contribute
+Ways to contribute:
+- Train an model that can be plugged into the SmartCam's image classification pipeline.
+- Develop your own experiment that is unrelated to SmartCam and image classification but makes use of the SmartCam's underlying Tensorflow Lite inference program.
+- OPS-SAT is your flying laboratory: come up with your own experiment that is unrelated to the SmartCam app or the AI framework that powers it.
 
-## Inference
-The SmartCam app is written in Python. The inference program it invokes is written in C and can be found [here](https://github.com/georgeslabreche/tensorflow-opssat-smartcam).
-
-## Neural Networks
-The app can apply any .tflite neural network image classification model file trained with TensorFlow. The default model labels the images acquired by the spacecraft's camera as either "earth", "edge", or "bad". 
-
-## How does it work?
-The desired app configurations are set in the config.ini file. Starting the app triggers the following sequence of operations:
+Join the [OPS-SAT community platform](https://opssat1.esoc.esa.int/) and apply to become an experimenter, it's quick and easy! 
+## 3. How does it work?
+### 3.1. Overview
+The SmartCam's app configuration is set in the config.ini file. The gist of the application's logic is as follow:
 
 1. Acquires ims_rgb (raw) and png image files using the spacecraft's HD camera.
 2. Creates a thumbnail jpeg image.
 3. Creates a neural network input jpeg image.
-4. Labels the input image using the neural network model file specified in the config.ini file.
-5. Repeat steps 2 through 5 for as many times specified in the config.ini file.
-6. Move the labeled thumbnails and log file into the app's toGround folder for downlinking.
+4. Labels the image using the entry point neural network model file specified by *entry_point_model* in config.ini.
+5. If the applied label is part of the model's *labels_keep* in config.ini then label the image further with the next model in model pipeline.
+6. Repeat step 5 until either the applied label is not part of the current model's configured *labels_keep* or until the last model of the pipeline has been applied.
+7. The labeled images are moved into the experiment and the filestore's toGround folders depending on the keep images and downlink configurations set in config.ini.
 
-## Configuration
-Consult the app's config.ini file for the default configuration values,
+### 3.2. Building an image classification pipeline
+1. Each model consists of a .tflite and a labels.txt file located in a model folder under `/home/exp1000/models`, e.g: `/home/exp1000/models/default` and `/home/exp1000/models/cloud_detection`.
+2. Create a config.ini section for each model. Prefix the section name with `model_`, e.g. `[model_default]` and `[model_cloud_detection]`.
+3. Each model's config section will specify which label to keep via the *labels_keep* property. For instance, if the default model can label an image as either "earth", "edge", or "bad", but we only want to keep images classified with the first two labels, then `labels_keep = ["earth", "edge"]`.
+4. If another image classification needs to follow up after an image was previously classified with a certain label, then the follow up model name can be appended following a colon. E.g. `["earth:cloud_detection", "edge"]`.
+5. The entry point model that will be the first image classification applid in the model pipeline is specified in the config.ini's *entry_point_model* property, e.g. `entry_point_model = default`. 
 
-### General
-- *downlink_log_if_no_images* - flag if the log file(s) should be downlinked even if no images are labeled for downlink.
+## 4. Configuration
+Consult the app's config.ini file for the default configuration values.
 
-### Model
+### 4.1. General
+- *downlink_log_if_no_images* - indicate whether or not the log file(s) should be downlinked even if no images are labeled for downlink (yes/no).
+- *entry_point_model* - the first image classification model to apply in the model pipeline.
+- *downlink_thumbnails* - indicate whether or not thumbnails should be downlinked (yes/no).
+- *downlink_compressed_raws* - indicate whether or not raws should be compressed and downlinked (yes/no).
+- *downlink_compressed_split* - maximum downlink file size (bytes). File is split if this limit is exceeded. Uses the [split](https://man7.org/linux/man-pages/man1/split.1.html) command.
+- *raw_compression_type* - which compression algorithm to apply on raw image files.
+- *collect_metadata* - collect metadata into a CSV file (yes/no).
+- *tle_path* - path to the TLE file.
+- *quota_toGround* - experiment's toGround folder size limit (KB). Image acquisition is skipped if this limit is exceeded.
+
+### 4.2. Image Acquisition
+- *gen_interval* - default image acquisition period (in seconds).
+- *gen_interval_throttle* - image acquisition period used when a label of interest has been applied to the previously acquired image (in seconds).
+- *gen_number* - number of image acquisition interations.
+- *gen_exposure* - camera exposure value.
+- *gen_gains* - rgb gains.
+
+### 4.3. Images
+- *raw_keep* - flag if the raw image file should be kept.
+- *png_keep* - flag if the png image file should be kept.
+- *jpeg_scaling* - scaling factor applied on the png file when generating the jpeg thumbnail.
+- *jpeg_quality* - png to jpeg conversion quality level.
+- *jpeg_processing* - image processing to apply when generating jpeg thumbnail (none, pnmnorm, or pnmhisteq).
+
+### 4.4. Model
 - *tflite_model* - path of the TensorFlow Lite neural network mode file.
 - *labels* - path of the labels text file.
 - *labels_keep* - only downlink images that are classified with these labels.
@@ -40,15 +74,36 @@ Consult the app's config.ini file for the default configuration values,
 - *input_std* - standard deviation of the image input.
 - *confidence_threshold* - minimum confidence level required to apply the label predicted by the neural network model.
 
-### Image Acquisition
-- *gen_interval* - image acquisitions period in seconds.
-- *gen_number* - number of image acquisition interations.
-- *gen_exposure* - camera exposure value.
-- *gen_gains* - rgb gains.
+### 4.5. Raw Image Compression
+#### 4.5.1. Fapec
+- *chunk* - chunk size.
+- *threads* - number of threads.
+- *dtype* - dtype.
+- *band* - input band.
+- *losses* - losses (0 is lossless).
+- *meaningful_bits* - meaningful bits.
+- *lev* - inter-band decorrelation adaptiveness.
 
-### Images
-- *raw_keep* - flag if the raw image file should be kept.
-- *png_keep* - flag if the png image file should be kept.
-- *jpeg_scaling* - scaling factor applied on the png file when generating the jpeg thumbnail.
-- *jpeg_quality* - png to jpeg conversion quality level.
-- *jpeg_processing* - image processing to apply when generating jpeg thumbnail (none, pnmnorm, or pnmhisteq).
+#### 4.5.2. Others
+No other image compression algorithms are currently supported.
+
+## 5. Image Metadata
+A CSV file is created and downlinked when *collect_metadata* is set to `yes`. Each row contains metadata for an image acquired during the SmartCam app's execution. Metadata for images that were discarded are also included. The following information is collected:
+
+- *filename* - name of the image file.
+- *label* - final label applied by the image classification pipeline.
+- *confidence* - confidence level of the applied label.
+- *keep* - whether the image was kept or not based on the applied label.
+- *gain_r* - red gain value set for the camera's RGB gain setting.
+- *gain_g* - green gain value set for the camera's RGB gain setting.
+- *gain_b* - blue gain value set for the camera's RGB gain setting.
+- *exposure* - camera exposure setting, in milliseconds.
+- *acq_ts* - image acquisition timestamp, in milliseconds.
+- *acq_dt* - image acquisition datetime.
+- *ref_dt* - TLE reference datetime. The on-board TLE file is used to project the latitude and longitude of the spacecraft's groundtrack location, as well as its altitude, based on the image acquisition's timestamp.
+- *tle_age* - age of the reference TLE.
+- *lat* - latitude of the spacecraft's groundtrack location.
+- *lng* - longitude of the spacecraft's groundtrack location.
+- *h* - altitude of the spacecraft's orbit, i.e. height above Earth's surface.
+- *tle_ref_line1* - line 1 of the reference TLE.
+- *tle_ref_line2* - line 2 of the reference TLE.
