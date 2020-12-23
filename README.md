@@ -1,11 +1,7 @@
-<div style="text-align:center">
-  <img src="https://raw.githubusercontent.com/georgeslabreche/opssat-smartcam/main/docs/ops-sat_smartcam_logo.png?raw=true" />
-  <img src="https://raw.githubusercontent.com/georgeslabreche/opssat-smartcam/main/docs/ops-sat_mission_patch.jpg?raw=true" />
-</div>
+![OPS-SAT SmartCam](https://raw.githubusercontent.com/georgeslabreche/opssat-smartcam/main/docs/ops-sat_smartcam_logo_transparentbg.png?raw=true)
 
-
-# OPS-SAT SmartCam
-An image acquisition and classification app for the European Space Agency's [OPS-SAT](https://www.esa.int/Enabling_Support/Operations/OPS-SAT_your_flying_laboratory) spacecraft. An acquired image can go through a pipeline of multiple image classification models that are applied in a sequence.
+# Background
+The OPS-SAT SmartCam is an image acquisition and classification app for the European Space Agency's [OPS-SAT](https://www.esa.int/Enabling_Support/Operations/OPS-SAT_your_flying_laboratory) spacecraft. An acquired image can go through a pipeline of multiple image classification models that are applied in a sequence.
 
 1. [Neural Networks](https://github.com/georgeslabreche/opssat-smartcam#neural-networks)
 2. [Contribute](https://github.com/georgeslabreche/opssat-smartcam#contribute)
