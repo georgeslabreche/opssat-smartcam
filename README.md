@@ -1,4 +1,4 @@
-![OPS-SAT SmartCam](https://github.com/georgeslabreche/opssat-smartcam/blob/gh-pages/OPS-SAT_SmartCam.jpg?raw=true)
+![OPS-SAT SmartCam](https://github.com/georgeslabreche/opssat-smartcam/blob/gh-pages/OPS-SAT_SmartCam.png?raw=true)
 
 # OPS-SAT SmartCam
 An image acquisition and classification app for the European Space Agency's [OPS-SAT](https://www.esa.int/Enabling_Support/Operations/OPS-SAT_your_flying_laboratory) spacecraft. An acquired image can go through a pipeline of multiple image classification models that are applied in a sequence.
