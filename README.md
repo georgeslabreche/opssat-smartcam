@@ -111,3 +111,6 @@ A CSV file is created and downlinked when *collect_metadata* is set to `yes`. Ea
 - *h* - altitude of the spacecraft's orbit, i.e. height above Earth's surface.
 - *tle_ref_line1* - line 1 of the reference TLE.
 - *tle_ref_line2* - line 2 of the reference TLE.
+
+
+![OPS-SAT SmartCam](https://raw.githubusercontent.com/georgeslabreche/opssat-smartcam/main/docs/ops-sat_mission_patch.png?raw=true)
