@@ -2,4 +2,6 @@
 *.ims_rgb
 *.png
 *.jpeg
+*.jpg
 !docs/*.png
+!docs/*.jpg
