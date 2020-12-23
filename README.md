@@ -14,7 +14,7 @@ The app can apply any .tflite neural network image classification model file tra
 
 ## 2. Contribute
 Ways to contribute:
-- Train an model that can be plugged into the SmartCam's image classification pipeline.
+- Train a model that can be plugged into the SmartCam's image classification pipeline.
 - Develop your own experiment that is unrelated to SmartCam and image classification but makes use of the SmartCam's underlying Tensorflow Lite inference program.
 - OPS-SAT is your flying laboratory: come up with your own experiment that is unrelated to the SmartCam app or the AI framework that powers it.
 
