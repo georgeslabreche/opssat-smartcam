@@ -1,4 +1,4 @@
-![OPS-SAT SmartCam](https://raw.githubusercontent.com/georgeslabreche/opssat-smartcam/main/docs/ops-sat_smartcam_logo_transparentbg.png?raw=true)
+![OPS-SAT SmartCam Logo](https://raw.githubusercontent.com/georgeslabreche/opssat-smartcam/main/docs/ops-sat_smartcam_logo_transparentbg.png?raw=true)
 
 # Background
 The OPS-SAT SmartCam is an image acquisition and classification app for the European Space Agency's [OPS-SAT](https://www.esa.int/Enabling_Support/Operations/OPS-SAT_your_flying_laboratory) spacecraft. An acquired image can go through a pipeline of multiple image classification models that are applied in a sequence.
@@ -113,4 +113,4 @@ A CSV file is created and downlinked when *collect_metadata* is set to `yes`. Ea
 - *tle_ref_line2* - line 2 of the reference TLE.
 
 
-![OPS-SAT SmartCam](https://raw.githubusercontent.com/georgeslabreche/opssat-smartcam/main/docs/ops-sat_mission_patch.png?raw=true)
+![OPS-SAT Mission Patch](https://raw.githubusercontent.com/georgeslabreche/opssat-smartcam/main/docs/ops-sat_mission_patch.png?raw=true)
