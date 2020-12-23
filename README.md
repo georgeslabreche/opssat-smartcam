@@ -75,7 +75,9 @@ Consult the app's config.ini file for the default configuration values.
 - *confidence_threshold* - minimum confidence level required to apply the label predicted by the neural network model.
 
 ### 4.5. Raw Image Compression
-#### 4.5.1. Fapec
+#### 4.5.1. FAPEC
+The FAPEC compression binary provided by [DAPCOM DataServices](dapcom.es) and not included in this repository. The compressor can only be used with a valid license (free of charge if exclusively used for OPS-SAT purposes). Free decompression licenses (with some limitations) can be obtained from the DAPCOM website or upon request to [fapec@dapcom.es](fapec@dapcom.es).
+
 - *chunk* - chunk size.
 - *threads* - number of threads.
 - *dtype* - dtype.
