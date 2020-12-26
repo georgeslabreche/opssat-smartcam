@@ -25,18 +25,19 @@ The SmartCam's app configuration is set in the config.ini file. The gist of the 
 
 1. Acquires ims_rgb (raw) and png image files using the spacecraft's HD camera.
 2. Creates a thumbnail jpeg image.
-3. Creates a neural network input jpeg image.
-4. Labels the image using the entry point neural network model file specified by *entry_point_model* in config.ini.
-5. If the applied label is part of the model's *labels_keep* in config.ini then label the image further with the next model in model pipeline.
+3. Creates an input jpeg image for the image classifier.
+4. Labels the image using the entry point model file specified by *entry_point_model* in config.ini.
+5. If the applied label is part of the model's *labels_keep* in config.ini then label the image further with the next model in image classification pipeline.
 6. Repeat step 5 until either the applied label is not part of the current model's configured *labels_keep* or until the last model of the pipeline has been applied.
-7. The labeled images are moved into the experiment and the filestore's toGround folders depending on the keep images and downlink configurations set in config.ini.
+7. The labeled image is moved into the experiment and the filestore's toGround folders depending on the keep images and downlink configurations set in config.ini.
+8. Repeat steps 1 through 7 until the image acquisition loop as gone through the number of iterations set by *gen_number* in config.ini.
 
 ### 3.2. Building an image classification pipeline
 1. Each model consists of a .tflite and a labels.txt file located in a model folder under `/home/exp1000/models`, e.g: `/home/exp1000/models/default` and `/home/exp1000/models/cloud_detection`.
 2. Create a config.ini section for each model. Prefix the section name with `model_`, e.g. `[model_default]` and `[model_cloud_detection]`.
 3. Each model's config section will specify which label to keep via the *labels_keep* property. For instance, if the default model can label an image as either "earth", "edge", or "bad", but we only want to keep images classified with the first two labels, then `labels_keep = ["earth", "edge"]`.
 4. If another image classification needs to follow up after an image was previously classified with a certain label, then the follow up model name can be appended following a colon. E.g. `["earth:cloud_detection", "edge"]`.
-5. The entry point model that will be the first image classification applid in the model pipeline is specified in the config.ini's *entry_point_model* property, e.g. `entry_point_model = default`. 
+5. The entry point model that will be the first model applied in the image classification pipeline is specified in the config.ini's *entry_point_model* property, e.g. `entry_point_model = default`. 
 
 ## 4. Configuration
 Consult the app's config.ini file for the default configuration values.
@@ -53,11 +54,21 @@ Consult the app's config.ini file for the default configuration values.
 - *quota_toGround* - experiment's toGround folder size limit (KB). Image acquisition is skipped if this limit is exceeded.
 
 ### 4.2. Image Acquisition
-- *gen_interval* - default image acquisition period (in seconds).
-- *gen_interval_throttle* - image acquisition period used when a label of interest has been applied to the previously acquired image (in seconds).
-- *gen_number* - number of image acquisition interations.
-- *gen_exposure* - camera exposure value.
-- *gen_gains* - rgb gains.
+There are two types of image acquisition that can beet set: polling or geographical:
+- Polling: acquire images in a loop that begins at the experiment start time.
+- Geographic: acquire images whenever the spacecraft is above an area of interest, during daytime, as defined by polygon shapes in a GeoJSON file.
+
+#### 4.2.1. Camera Settings
+- *cam_exposure* - exposure value (in milliseconds).
+- *cam_gains* - rgb gains (e.g. [8, 8, 8]).
+
+#### 4.2.2. Acquisition Type
+- *gen_type* - can be either `geo` or `poll` for "geographic" or "polling", respecticaly.
+- *gen_interval* - wait time between image acquisition loop iterations (in seconds).
+- *gen_interval_throttle* - wait time between image acquisition loop iterations when a label of interest has been applied to the previously acquired image (in seconds).
+- *gen_number* - number of image acquisition iterations for image acquisition of type `poll`.
+- *gen_max* - maximum number of images to acquire for image acquisition of type `geo`.
+- *gen_geojson* - path of the GeoJSON file with polygons defining areas of interest for image acquisition.
 
 ### 4.3. Images
 - *raw_keep* - flag if the raw image file should be kept.
