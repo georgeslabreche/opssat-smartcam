@@ -940,64 +940,69 @@ def run_experiment():
     img_editor = ImageEditor()
     img_classifier = ImageClassifier()
     img_metadata = ImageMetaData(cfg.tle_path, cfg.cam_gains, cfg.cam_exposure)
-
-    # Flag and counter to keep track.
-    done = False
-    counter = 0
-
-    # Check if the experiment's toGround folder is below a configured quota before proceeding with the experiment.
-    try:
-        toGround_size = int(subprocess.check_output(['du', '-s', TOGROUND_PATH]).decode('utf-8').split()[0])
-        done = True if toGround_size >= cfg.quota_toGround else False
-
-        if done:
-            logger.info("Exiting: the experiment's toGround folder is greater than the configured quota: {TG} KB > {Q} KB.".format(\
-                TG=toGround_size,\
-                Q=cfg.quota_toGround))
-
-    except:
-        logger.exception("Exiting: failed to check disk space use of the experiment's toGround folder.")
-        done = False
     
     # Instanciate a compressor object if a compression algorithm was specified and configured in the config.ini.
     raw_compressor = None
 
-    # Proceed with instanciate the compressor object in case the is not marked to stop.
-    if not done:
+    # Raw image file compression will only be applied if we enable compressed raw downlinking.
+    if cfg.downlink_compressed_raws and cfg.raw_compression_type == 'fapec' and cfg.init_compression_fapec_props() is True:
 
-        # Raw image file compression will only be applied if we enable compressed raw downlinking.
-        if cfg.downlink_compressed_raws and cfg.raw_compression_type == 'fapec' and cfg.init_compression_fapec_props() is True:
+        # Instanciate compression object that will be used to compress the raw image files.
+        raw_compressor = Fapec(cfg.compression_fapec_chunk,\
+            cfg.compression_fapec_threads,\
+            cfg.compression_fapec_dtype,\
+            cfg.compression_fapec_band,\
+            cfg.compression_fapec_losses,\
+            cfg.compression_fapec_meaningful_bits,\
+            cfg.compression_fapec_lev)
 
-            # Instanciate compression object that will be used to compress the raw image files.
-            raw_compressor = Fapec(cfg.compression_fapec_chunk,\
-                cfg.compression_fapec_threads,\
-                cfg.compression_fapec_dtype,\
-                cfg.compression_fapec_band,\
-                cfg.compression_fapec_losses,\
-                cfg.compression_fapec_meaningful_bits,\
-                cfg.compression_fapec_lev)
+        logger.info("Raw image file compression enabled: " + cfg.raw_compression_type + ".")
 
-            logger.info("Raw image file compression enabled: " + cfg.raw_compression_type + ".")
+    else:
+        # No compression will be applied to the raw image files.
+        logger.info("Raw image file compression disabled.")
 
-        else:
-            # No compression will be applied to the raw image files.
-            logger.info("Raw image file compression disabled.")
 
     # Default immage acquisition interval. Can be throttled when an acquired image is labeled to keep.
     image_acquisition_period = cfg.gen_interval
+
+    # Image acquisition loop flag and counter to keep track.
+    done = False
+    counter = 0
 
     # Image acquisition loop.
     while not done:
 
         # Flag indicating whether or not we should skip the image acquisition and labeling process
-        # We would want to skip in case some criteria is not met or in case we encounter an error.
+        # We want to skip in case some criteria is not met or in case we encounter an error.
         success = True
 
-        try:
+        # Cleanup any files that may have been left over from a previous run that may have terminated ungracefully.
+        # Skip image acquisition in case of file deletion failure.
+        if utils.cleanup() < 0:
+            success = False
 
-            # Cleanup any files that may have been left over from a previous run that may have terminated ungracefully.
-            if utils.cleanup() < 0:
-                success = False
+        # Check if the experiment's toGround folder is below a configured quota before proceeding with image acquisition.
+        try:
+            toGround_size = int(subprocess.check_output(['du', '-s', TOGROUND_PATH]).decode('utf-8').split()[0])
+            done = True if toGround_size >= cfg.quota_toGround else False
+
+            if done:
+                logger.info("Exiting: the experiment's toGround folder is greater than the configured quota: {TG} KB > {Q} KB.".format(\
+                    TG=toGround_size,\
+                    Q=cfg.quota_toGround))
+
+                # Exit the image acquisition loop.
+                break
+
+        except:
+            logger.exception("Exiting: failed to check disk space use of the experiment's toGround folder.")
+            
+            # Exit the image acquisition loop.
+            break
+
+
+        try:
 
             # If the image acquisition type is geographic then only acquire an image if the spacecraft is located above an area of interest.
             # Areas of interests are defined as geophraphic shapes represented by polygons listed in the GeoJSON file.
@@ -1011,6 +1016,7 @@ def run_experiment():
                     # Groundtrack coordinates successfully fetched.
                     if current_coords is not None:
 
+                        # TODO: Implement daytime check.
                         def is_daytime():
                             return True
 
@@ -1043,12 +1049,12 @@ def run_experiment():
                         success = False
 
                 except:
-                    # An unexpected exception occurred.
+                    # Skip this image acquisition loop if an unexpected exception occurred.
                     logger.exception("Failed to acquire image based on geographic area of interest.")
-
                     success = False
 
-            # Reset the image acquisition period to the default value in case it was throttled in the previous iteration of the image acquisition loop.
+            # If we are skipping image acquisition then reset the image acquisition period to the default value.
+            # Do this in case the period was throttled in the previous iteration of the image acquisition loop.
             if not success:
                 image_acquisition_period = cfg.gen_interval
 
@@ -1217,6 +1223,7 @@ def run_experiment():
             # Log the exception and exit the loop.
             logger.exception("An unlikely failure occured while waiting for the next image acquisition.")
             done = True
+            
 
     # We have exited the image acquisition and labeling loop.
     # This means that we have finished labeling the acquired images. 
