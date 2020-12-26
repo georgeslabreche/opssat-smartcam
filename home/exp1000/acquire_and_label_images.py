@@ -988,22 +988,20 @@ def run_experiment():
             done = True if toGround_size >= cfg.quota_toGround else False
 
             if done:
+                # Exit the image acquisition loop in case toGround disk size is too large.
                 logger.info("Exiting: the experiment's toGround folder is greater than the configured quota: {TG} KB > {Q} KB.".format(\
                     TG=toGround_size,\
                     Q=cfg.quota_toGround))
 
-                # Exit the image acquisition loop.
+                # Break out the image acquisition loop.
                 break
 
         except:
+            # Exit the image acquisition loop in case of exception.
             logger.exception("Exiting: failed to check disk space use of the experiment's toGround folder.")
-            
-            # Exit the image acquisition loop.
             break
 
-
         try:
-
             # If the image acquisition type is geographic then only acquire an image if the spacecraft is located above an area of interest.
             # Areas of interests are defined as geophraphic shapes represented by polygons listed in the GeoJSON file.
             if cfg.gen_type == GEN_TYPE_GEO:
