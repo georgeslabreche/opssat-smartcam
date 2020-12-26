@@ -1,3 +1,9 @@
 #!/bin/sh
+
+# Stop the experiment.
 /home/exp1000/stop_exp1000.sh
+
+# Remove symbolic links created during installation.
+rm -rf /home/exp1000/bin/_solib_armhf
+
 exit 0
