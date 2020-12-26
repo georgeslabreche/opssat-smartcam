@@ -63,7 +63,7 @@ There are two types of image acquisition that can beet set: polling or geographi
 - *cam_gains* - rgb gains (e.g. [8, 8, 8]).
 
 #### 4.2.2. Acquisition Type
-- *gen_type* - can be either `geo` or `poll` for "geographic" or "polling", respecticaly.
+- *gen_type* - can be either `geo` or `poll` for "geographic" or "polling", respectively.
 - *gen_interval* - wait time between image acquisition loop iterations (in seconds).
 - *gen_interval_throttle* - wait time between image acquisition loop iterations when a label of interest has been applied to the previously acquired image (in seconds).
 - *gen_number* - number of image acquisition iterations for image acquisition of type `poll`.
