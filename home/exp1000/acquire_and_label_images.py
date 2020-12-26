@@ -13,7 +13,6 @@ import ntpath
 import re
 import csv
 import ephem
-from ephem import degree
 from pathlib import Path
 from shapely import geometry
 
@@ -199,8 +198,6 @@ class AppConfig:
 
         self.gen_geojson = self.config.get('gen_geo', 'gen_geojson')
 
-        self.gen_day_only = self.config.getboolean('gen_geo', 'gen_day_only')
-
 
     def init_img_props(self):
         """Fetch image parameters."""
@@ -290,6 +287,7 @@ class ImageMetaData:
         # The list that will contain metadata dictionary entries.
         self.metadata_list = []
 
+
     def get_groundtrack_coordinates(self):
         """Get coordinates of the geographic point beneath the satellite."""
 
@@ -304,15 +302,47 @@ class ImageMetaData:
             self.tle.compute(d_ephem)
 
             # Return ground track coordinates of the point beneath the spacecraft.
-            return [self.tle.sublat / degree, self.tle.sublong / degree]
+            return {
+                'lat': self.tle.sublat / ephem.degree,
+                'lng':  self.tle.sublong / ephem.degree,
+                'time': current_timestamp
+            } 
         
         except:
-
             # Something went wrong.
             logger.exception("Failed to fetch groundtrack coordinates.")
 
             # Return none.
             return None
+
+
+    def is_daytime(self, lat, lng, time):
+        """Check if it's daytime at the given location for the given time."""
+
+        try:
+            # Create an Observer object.
+            observer = ephem.Observer()
+
+            # Set the observer to the given location and time.
+            observer.lat = lat
+            observer.long = lng
+            observer.date = ephem.Date(time)
+
+            # Create a Sun object.
+            sun = ephem.Sun()
+
+            # Compute the sun's position with respect to the observer.
+            sun.compute(observer)
+
+            # If the sun is above the observer then it's daytime. If not, then it's nighttime.
+            return sun.alt > 0
+        
+        except:
+            # Something went wrong.
+            logger.exception("Failed to fetch whether it is daytime or not at the given location.")
+
+            # Return false (nighttime) in case of error.
+            return False
 
 
     def collect_metadata(self, filename_png, label, confidence, keep):
@@ -364,8 +394,8 @@ class ImageMetaData:
                     'acq_dt': str(d_ephem),               # Image acquisition datetime.
                     'ref_dt': str(self.tle._epoch),       # Reference epoch.
                     'tle_age': d_ephem - self.tle._epoch, # TLE age (days).
-                    'lat': self.tle.sublat / degree,      # Latitude (deg).
-                    'lng': self.tle.sublong / degree,     # Longitude (deg).
+                    'lat': self.tle.sublat / ephem.degree,# Latitude (deg).
+                    'lng': self.tle.sublong / ephem.degree,# Longitude (deg).
                     'h': self.tle.elevation,              # Geocentric height above sea level (m).
                     'tle_ref_line1': self.tle_line1,      # Reference TLE line 1.
                     'tle_ref_line2': self.tle_line2       # Rererence TLE line 2.
@@ -1008,39 +1038,24 @@ def run_experiment():
                 
                 try:
                     # Get the coordinates of the spacecraft's current groundtrack position.
-                    current_coords = img_metadata.get_groundtrack_coordinates()
+                    coords = img_metadata.get_groundtrack_coordinates()
 
-                    # Groundtrack coordinates successfully fetched.
-                    if current_coords is not None:
+                    # Proceed if groundtrack coordinates successfully fetched.
+                    if current_coords is not None
 
-                        # TODO: Implement daytime check.
-                        def is_daytime():
-                            return True
+                        # Find out if it is daytime at the point directly below the spacecraft (i.e. at the point coordinate of the spacecraft's groundtrack position).
+                        is_daytime = img_metadata.is_daytime(coords.lat, coords.lng, coords.time)
+                    
+                        # If the groundtrack coordinates are above a point on Earth's surface where it is daylight then proceed in checking if we are above an area of interest.
+                        if is_daytime:
 
-                        # Check if the spacecraft is above an area of interest and whether it is daytime or nighttime.
-                        # Proceed with the image acquisition if condition are satisfied.
-                        # If they aren't then skip the image acquisition and proceed to the next iteration of the image acquisition loop.
-
-                        # If we only want daytime pictures.
-                        if cfg.gen_day_only:
-                            
-                            # Then if it is currently daytime.
-                            if is_daytime():
-                                # It is daytime, proceed in checking if the spacecraft is currently above an area of interest.
-                                success = geojson_utils.is_point_in_polygon()
-
-                            else:
-                                # It is not daytime, skip this iteration of the image acquisition loop.
-                                success = False
-
-                        else:
-                            # We want an image whether it is daytime or nighttime.
-                            # Proceed in checking if the spacecraft is currently above an area of interest.
+                            # Check if the spacecraft is above an area of interest.
+                            # Continue with the image acquisition if it is by setting the success flag to True.
                             success = geojson_utils.is_point_in_polygon()
 
                     else:
-                        # Skip this image acquisition loop if groung track coordinates not fetched.
-                        logger.info("Skipping image acquisition: failed to fetch groundtrack coordinates.")
+                        # Skip this image acquisition loop if ground track coordinates not fetched.
+                        logger.error("Skipping image acquisition: failed to fetch groundtrack coordinates.")
                         success = False
 
                 except:
