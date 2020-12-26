@@ -1007,7 +1007,6 @@ def run_experiment():
             if cfg.gen_type == GEN_TYPE_GEO:
                 
                 try:
-
                     # Get the coordinates of the spacecraft's current groundtrack position.
                     current_coords = img_metadata.get_groundtrack_coordinates()
 
@@ -1027,12 +1026,10 @@ def run_experiment():
                             
                             # Then if it is currently daytime.
                             if is_daytime():
-
                                 # It is daytime, proceed in checking if the spacecraft is currently above an area of interest.
                                 success = geojson_utils.is_point_in_polygon()
 
                             else:
-
                                 # It is not daytime, skip this iteration of the image acquisition loop.
                                 success = False
 
