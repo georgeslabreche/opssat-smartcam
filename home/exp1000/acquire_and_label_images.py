@@ -299,9 +299,9 @@ class ImageMetaData:
 
             # Return ground track coordinates of the point beneath the spacecraft.
             return {
-                'lat': self.tle.sublat / ephem.degree,
-                'lng':  self.tle.sublong / ephem.degree,
-                'dt': current_timestamp
+                'lat': self.tle.sublat,
+                'lng': self.tle.sublong,
+                'dt': d
             } 
         
         except:
@@ -312,7 +312,7 @@ class ImageMetaData:
             return None
 
 
-    def is_daytime(self, lat, lng, time):
+    def is_daytime(self, ephem_lat, ephem_lng, dt):
         """Check if it's daytime at the given location for the given time."""
 
         try:
@@ -320,9 +320,9 @@ class ImageMetaData:
             observer = ephem.Observer()
 
             # Set the observer to the given location and time.
-            observer.lat = lat
-            observer.long = lng
-            observer.date = ephem.Date(time)
+            observer.lat = ephem_lat
+            observer.long = ephem_lng
+            observer.date = ephem.Date(dt)
 
             # Create a Sun object.
             sun = ephem.Sun()
@@ -1050,7 +1050,7 @@ def run_experiment():
 
                             # Check if the spacecraft is above an area of interest.
                             # Continue with the image acquisition if it is by setting the success flag to True.
-                            success = geojson_utils.is_point_in_polygon(coords['lat'], coords['lng'])
+                            success = geojson_utils.is_point_in_polygon(coords['lat'] / ephem.degree, coords['lng'] / ephem.degree)
 
                         else:
                             # It's nightime so skip image acquisition.
@@ -1215,8 +1215,17 @@ def run_experiment():
         # Error handling here to not risk an unlikely infinite loop.
         try:
 
-            # Increment image acquisition labeling counter.
-            counter = counter + 1
+            # Flag indicating if AOI image was acquired. Use this flag to determine if the loop counter gets incremented or not.
+            # If image aquisition is set to AOI but an image is not acquired then don't increment the counter for this iteration.
+            # This is because in AOI mode the maximum counter value is the total number of images we want to acquire rather than
+            # the maximum number of labelled images (as is the case for the Looping mode for image aquisition).
+            if cfg.gen_type == GEN_TYPE_AOI:
+                if keep_image:
+                    counter = counter + 1
+
+            else:  # Increment image acquisition labeling counter for the polling mode.
+                counter = counter + 1
+
 
             # Wait the configured sleep time before proceeding to the next image acquisition and labeling.
             if counter < cfg.gen_number:
