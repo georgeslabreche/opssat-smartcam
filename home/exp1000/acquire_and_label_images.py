@@ -182,9 +182,9 @@ class AppConfig:
         # Image generation type: polling or area of interest (AOI).
         self.gen_type = self.config.get('gen', 'gen_type')
 
-        self.gen_interval = self.config.getint('gen', 'gen_interval')
+        self.gen_interval = self.config.getfloat('gen', 'gen_interval')
 
-        self.gen_interval_throttle = self.config.getint('gen', 'gen_interval_throttle')
+        self.gen_interval_throttle = self.config.getfloat('gen', 'gen_interval_throttle')
 
         # Number of images to acquire.
         self.gen_number = self.config.getint('gen', 'gen_number')
