@@ -293,7 +293,7 @@ class ImageMetaData:
 
         try:
             # Get current timestamp in milliseconds.
-            current_timestamp = int(time.time() * 1000)
+            d = datetime.datetime.utcnow()
 
             # Ephem datetime object representation of the current timestamp.
             d_ephem = ephem.Date(d)
@@ -305,7 +305,7 @@ class ImageMetaData:
             return {
                 'lat': self.tle.sublat / ephem.degree,
                 'lng':  self.tle.sublong / ephem.degree,
-                'time': current_timestamp
+                'dt': current_timestamp
             } 
         
         except:
@@ -513,6 +513,8 @@ class GeoJsonUtils:
 
         # The given point is not in any target shapes.
         return False
+
+
 class Fapec:
 
     bin_path = FAPEC_BIN_PATH
@@ -772,6 +774,7 @@ class Utils:
         # Disk usage.
         df_output = subprocess.check_output(['df', '-h']).decode('utf-8')
         logger.info('Disk usage:\n' + df_output) 
+
 
 class HDCamera:
 
@@ -1041,17 +1044,21 @@ def run_experiment():
                     coords = img_metadata.get_groundtrack_coordinates()
 
                     # Proceed if groundtrack coordinates successfully fetched.
-                    if current_coords is not None
+                    if coords is not None:
 
                         # Find out if it is daytime at the point directly below the spacecraft (i.e. at the point coordinate of the spacecraft's groundtrack position).
-                        is_daytime = img_metadata.is_daytime(coords.lat, coords.lng, coords.time)
+                        is_daytime = img_metadata.is_daytime(coords['lat'], coords['lng'], coords['dt'])
                     
                         # If the groundtrack coordinates are above a point on Earth's surface where it is daylight then proceed in checking if we are above an area of interest.
                         if is_daytime:
 
                             # Check if the spacecraft is above an area of interest.
                             # Continue with the image acquisition if it is by setting the success flag to True.
-                            success = geojson_utils.is_point_in_polygon()
+                            success = geojson_utils.is_point_in_polygon(coords['lat'], coords['lng'])
+
+                        else:
+                            # It's nightime so skip image acquisition.
+                            success = False
 
                     else:
                         # Skip this image acquisition loop if ground track coordinates not fetched.
@@ -1217,7 +1224,11 @@ def run_experiment():
 
             # Wait the configured sleep time before proceeding to the next image acquisition and labeling.
             if counter < cfg.gen_number:
-                logger.info("Wait {T} seconds...".format(T=image_acquisition_period))
+
+                # Don't span the log in case of a long run for image acquisition type "geo".
+                if cfg.gen_type != GEN_TYPE_GEO:
+                    logger.info("Wait {T} seconds...".format(T=image_acquisition_period))
+
                 time.sleep(image_acquisition_period)
             else:
                 logger.info("Image acquisition loop completed.")
