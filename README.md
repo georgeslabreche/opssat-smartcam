@@ -10,7 +10,7 @@ The OPS-SAT SmartCam is an image acquisition and classification app for the Euro
 5. [Image Metadata](https://github.com/georgeslabreche/opssat-smartcam#image-metadata)
 
 ## 1. Neural Networks
-The app can apply any .tflite neural network image classification model file trained with TensorFlow. The default model labels the images acquired by the spacecraft's camera as either "earth", "edge", or "bad". The SmartCam's image classification program [uses the TensorFlow Lite C API for model inference](https://github.com/georgeslabreche/tensorflow-opssat-smartcam). Tensorflow Lite inference is thus available to any experimenter without being restricted to image classification. 
+The app can apply any .tflite neural network image classification model file trained with TensorFlow. The default model's labels are "earth", "edge", and "bad". The SmartCam's image classification program [uses the TensorFlow Lite C API for model inference](https://github.com/georgeslabreche/tensorflow-opssat-smartcam). Tensorflow Lite inference is thus available to any experimenter without being restricted to image classification. 
 
 ## 2. Contribute
 Ways to contribute:
@@ -40,8 +40,7 @@ The SmartCam's app configuration is set in the config.ini file. The gist of the 
 5. The entry point model that will be the first model applied in the image classification pipeline is specified in the config.ini's *entry_point_model* property, e.g. `entry_point_model = default`. 
 
 ## 4. Configuration
-Consult the app's config.ini file for the default configuration values.
-
+This section describes the app's configuration parameters in the `config.ini` file.
 ### 4.1. General
 - *downlink_log_if_no_images* - indicate whether or not the log file(s) should be downlinked even if no images are labeled for downlink (yes/no).
 - *entry_point_model* - the first image classification model to apply in the model pipeline.
@@ -54,20 +53,25 @@ Consult the app's config.ini file for the default configuration values.
 - *quota_toGround* - experiment's toGround folder size limit (KB). Image acquisition is skipped if this limit is exceeded.
 
 ### 4.2. Image Acquisition
-There are two types of image acquisition that can beet set: polling or geographical:
+There are two types of image acquisition that can beet set: Polling or Area-of-Interest (AOI):
 - Polling: acquire images in a loop that begins at the experiment start time.
-- Geographic: acquire images whenever the spacecraft is above an area of interest, during daytime, as defined by polygon shapes in a GeoJSON file.
+- AOI: acquire images whenever the spacecraft is above an area of interest, during daytime, as defined by polygon shapes in a GeoJSON file.
 
-#### 4.2.1. Camera Settings
+#### 4.2.1. AOI GeoJSON files.
+- The default AOI GeoJSON files defines multipolygon representations of all continents except Antarctica. 
+- Use [geojson.io](https://geojson.io) to define custom AOI polygons for the app to consume.
+- Use [mapshaper](https://mapshaper.org/) to simplify GeoJSON files onbtained from third-party providers in order to keep the file sizes small.
+- Coordinates with high precision floating point numbers do not contribute much and are best avoided in favour of reduced GeoJSON file size.
+
+#### 4.2.2. Camera Settings
 - *cam_exposure* - exposure value (in milliseconds).
 - *cam_gains* - rgb gains (e.g. [8, 8, 8]).
 
-#### 4.2.2. Acquisition Type
-- *gen_type* - can be either `geo` or `poll` for "geographic" or "polling", respectively.
+#### 4.2.3. Acquisition Type
+- *gen_type* - can be either `aoi` or `poll` for "area-of-interest" or "polling", respectively.
 - *gen_interval* - wait time between image acquisition loop iterations (in seconds).
 - *gen_interval_throttle* - wait time between image acquisition loop iterations when a label of interest has been applied to the previously acquired image (in seconds).
-- *gen_number* - number of image acquisition iterations for image acquisition of type `poll`.
-- *gen_max* - maximum number of images to acquire for image acquisition of type `geo`.
+- *gen_number* - number of image acquisitions.
 - *gen_geojson* - path of the GeoJSON file with polygons defining areas of interest for image acquisition.
 
 ### 4.3. Images

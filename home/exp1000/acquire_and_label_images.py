@@ -57,8 +57,8 @@ METADATA_CSV_FILE = LOG_PATH + '/opssat_smartcam_metadata_{D}.csv'.format(D=STAR
 # Image filename prefix.
 IMG_FILENAME_PREFIX = "img_msec_"
 
-# Image generation type: geographic.
-GEN_TYPE_GEO = 'geo'
+# Image generation type: AOI.
+GEN_TYPE_AOI = 'aoi'
 
 # The logger.
 logger = None
@@ -179,24 +179,20 @@ class AppConfig:
     def init_gen_props(self):
         """Fetch image acquisition parameters."""
 
-        # Image generation type: polling or geographic.
+        # Image generation type: polling or area of interest (AOI).
         self.gen_type = self.config.get('gen', 'gen_type')
 
         self.gen_interval = self.config.getint('gen', 'gen_interval')
 
         self.gen_interval_throttle = self.config.getint('gen', 'gen_interval_throttle')
 
-        ## Gen type: polling.
-        self.gen_number = self.config.getint('gen_poll', 'gen_number')
+        # Number of images to acquire.
+        self.gen_number = self.config.getint('gen', 'gen_number')
         if self.gen_number <= 0:
            self.gen_number = 1
 
-        # Gen type: geographic.
-        self.gen_max = self.config.getint('gen_geo', 'gen_max')
-        if self.gen_max <= 0:
-           self.gen_max = 1
-
-        self.gen_geojson = self.config.get('gen_geo', 'gen_geojson')
+        # The GeoJSON AOI file that will be used in case of "aoi" image generation type.
+        self.gen_geojson = self.config.get('gen', 'gen_geojson')
 
 
     def init_img_props(self):
@@ -1035,9 +1031,9 @@ def run_experiment():
             break
 
         try:
-            # If the image acquisition type is geographic then only acquire an image if the spacecraft is located above an area of interest.
+            # If the image acquisition type is AOI then only acquire an image if the spacecraft is located above an area of interest.
             # Areas of interests are defined as geophraphic shapes represented by polygons listed in the GeoJSON file.
-            if cfg.gen_type == GEN_TYPE_GEO:
+            if cfg.gen_type == GEN_TYPE_AOI:
                 
                 try:
                     # Get the coordinates of the spacecraft's current groundtrack position.
@@ -1225,8 +1221,8 @@ def run_experiment():
             # Wait the configured sleep time before proceeding to the next image acquisition and labeling.
             if counter < cfg.gen_number:
 
-                # Don't span the log in case of a long run for image acquisition type "geo".
-                if cfg.gen_type != GEN_TYPE_GEO:
+                # Don't span the log in case of a long run for image acquisition type "aoi".
+                if cfg.gen_type != GEN_TYPE_AOI:
                     logger.info("Wait {T} seconds...".format(T=image_acquisition_period))
 
                 time.sleep(image_acquisition_period)
