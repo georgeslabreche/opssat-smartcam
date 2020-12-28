@@ -57,7 +57,7 @@ There are two types of image acquisition that can beet set: Polling or Area-of-I
 - Polling: acquire images in a loop that begins at the experiment start time.
 - AOI: acquire images whenever the spacecraft is above an area of interest, during daytime, as defined by polygon shapes in a GeoJSON file.
 
-#### 4.2.1. AOI GeoJSON files.
+#### 4.2.1. AOI GeoJSON Files
 - The default AOI GeoJSON files defines multipolygon representations of all continents except Antarctica. 
 - Use [geojson.io](https://geojson.io) to define custom AOI polygons for the app to consume.
 - Use [mapshaper](https://mapshaper.org/) to simplify GeoJSON files onbtained from third-party providers in order to keep the file sizes small.
