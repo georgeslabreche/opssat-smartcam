@@ -1006,6 +1006,9 @@ def run_experiment():
         # We want to skip in case some criteria is not met or in case we encounter an error.
         success = True
 
+        # Init keep image flag indicating if we kepp the image.
+        keep_image = False
+
         # Cleanup any files that may have been left over from a previous run that may have terminated ungracefully.
         # Skip image acquisition in case of file deletion failure.
         if utils.cleanup() < 0:
@@ -1223,7 +1226,7 @@ def run_experiment():
                 if keep_image:
                     counter = counter + 1
 
-            else:  # Increment image acquisition labeling counter for the polling mode.
+            else: # Increment image acquisition labeling counter for the polling mode.
                 counter = counter + 1
 
 
