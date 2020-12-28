@@ -3,6 +3,8 @@
 # Background
 The OPS-SAT SmartCam is an image acquisition and classification app for the European Space Agency's [OPS-SAT](https://www.esa.int/Enabling_Support/Operations/OPS-SAT_your_flying_laboratory) spacecraft. An acquired image can go through a pipeline of multiple image classification models that are applied in a sequence.
 
+The app features geospatial awareness with the ability to acquire images when the spacecraft is located above pre-defined areas of interests that are described as polygons and/or multi-polygons in a GeoJSON file. 
+
 1. [Neural Networks](https://github.com/georgeslabreche/opssat-smartcam#neural-networks)
 2. [Contribute](https://github.com/georgeslabreche/opssat-smartcam#contribute)
 3. [How does it work?](https://github.com/georgeslabreche/opssat-smartcam#how-does-it-work)
