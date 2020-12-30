@@ -3,5 +3,5 @@ Priority: optional
 Maintainer: esoc
 Architecture: sepp
 Section: Applications
-Version: 2.0
+Version: 2.1
 Description: hdcam image acquisition and artificial intelligence classification

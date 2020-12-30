@@ -13,8 +13,8 @@ import ntpath
 import re
 import csv
 import ephem
-from ephem import degree
 from pathlib import Path
+from shapely import geometry
 
 __author__ = 'Georges Labreche, Georges.Labreche@esa.int'
 
@@ -57,6 +57,9 @@ METADATA_CSV_FILE = LOG_PATH + '/opssat_smartcam_metadata_{D}.csv'.format(D=STAR
 # Image filename prefix.
 IMG_FILENAME_PREFIX = "img_msec_"
 
+# Image generation type: AOI.
+GEN_TYPE_AOI = 'aoi'
+
 # The logger.
 logger = None
 
@@ -69,6 +72,9 @@ class AppConfig:
 
         # Init the conf config section properties.
         self.init_conf_props()
+
+        # Init the camera section properties.
+        self.init_camera_props()
 
         # Init the gen config section properties.
         self.init_gen_props()
@@ -105,7 +111,7 @@ class AppConfig:
         # TLE file path.
         self.tle_path = self.config.get('conf', 'tle_path')
 
-        # Size quote for the experiment's toGround folder.
+        # Size quota for the experiment's toGround folder.
         self.quota_toGround = self.config.getint('conf', 'quota_toGround')
 
 
@@ -152,31 +158,41 @@ class AppConfig:
 
         return True
 
+    def init_camera_props(self):
+        """Fetch camera parameters."""
+
+        self.cam_exposure = self.config.getint('camera', 'cam_exposure')
+        if self.cam_exposure <= 1:
+            self.cam_exposure = 2
+
+        self.cam_gains = json.loads(self.config.get('camera', 'cam_gains'))
+        if self.cam_gains[0] >= 255:
+            self.cam_gains[0] = 255
+
+        if self.cam_gains[1] >= 255:
+            self.cam_gains[1] = 255
+
+        if self.cam_gains[2] >= 255:
+            self.cam_gains[2] = 255
+
 
     def init_gen_props(self):
         """Fetch image acquisition parameters."""
 
-        self.gen_interval = self.config.getint('gen', 'gen_interval')
+        # Image generation type: polling or area of interest (AOI).
+        self.gen_type = self.config.get('gen', 'gen_type')
 
-        self.gen_interval_throttle = self.config.getint('gen', 'gen_interval_throttle')
+        self.gen_interval = self.config.getfloat('gen', 'gen_interval')
 
+        self.gen_interval_throttle = self.config.getfloat('gen', 'gen_interval_throttle')
+
+        # Number of images to acquire.
         self.gen_number = self.config.getint('gen', 'gen_number')
         if self.gen_number <= 0:
-           self. gen_number = 1
+           self.gen_number = 1
 
-        self.gen_exposure = self.config.getint('gen', 'gen_exposure')
-        if self.gen_exposure <= 1:
-            self.gen_exposure = 2
-
-        self.gen_gains = json.loads(self.config.get('gen', 'gen_gains'))
-        if self.gen_gains[0] >= 255:
-            self.gen_gains[0] = 255
-
-        if self.gen_gains[1] >= 255:
-            self.gen_gains[1] = 255
-
-        if self.gen_gains[2] >= 255:
-            self.gen_gains[2] = 255
+        # The GeoJSON AOI file that will be used in case of "aoi" image generation type.
+        self.gen_geojson = self.config.get('gen', 'gen_geojson')
 
 
     def init_img_props(self):
@@ -268,6 +284,63 @@ class ImageMetaData:
         self.metadata_list = []
 
 
+    def get_groundtrack_coordinates(self):
+        """Get coordinates of the geographic point beneath the satellite."""
+
+        try:
+            # Get current timestamp in milliseconds.
+            d = datetime.datetime.utcnow()
+
+            # Ephem datetime object representation of the current timestamp.
+            d_ephem = ephem.Date(d)
+
+            # Compute based on reference TLE and the current timestamp.
+            self.tle.compute(d_ephem)
+
+            # Return ground track coordinates of the point beneath the spacecraft.
+            return {
+                'lat': self.tle.sublat,
+                'lng': self.tle.sublong,
+                'dt': d
+            } 
+        
+        except:
+            # Something went wrong.
+            logger.exception("Failed to fetch groundtrack coordinates.")
+
+            # Return none.
+            return None
+
+
+    def is_daytime(self, ephem_lat, ephem_lng, dt):
+        """Check if it's daytime at the given location for the given time."""
+
+        try:
+            # Create an Observer object.
+            observer = ephem.Observer()
+
+            # Set the observer to the given location and time.
+            observer.lat = ephem_lat
+            observer.long = ephem_lng
+            observer.date = ephem.Date(dt)
+
+            # Create a Sun object.
+            sun = ephem.Sun()
+
+            # Compute the sun's position with respect to the observer.
+            sun.compute(observer)
+
+            # If the sun is above the observer then it's daytime. If not, then it's nighttime.
+            return sun.alt > 0
+        
+        except:
+            # Something went wrong.
+            logger.exception("Failed to fetch whether it is daytime or not at the given location.")
+
+            # Return false (nighttime) in case of error.
+            return False
+
+
     def collect_metadata(self, filename_png, label, confidence, keep):
         """Collect metadata for the image acquired at the given timestamp."""
 
@@ -297,7 +370,7 @@ class ImageMetaData:
                 # Image acquisition datetime.
                 d = datetime.datetime.utcfromtimestamp(timestamp / 1000.0)
 
-                # Image acquisition epheme datetime object.
+                # Image acquisition ephem datetime object.
                 d_ephem = ephem.Date(d)
 
                 # Compute based on reference TLE and acquisition datetime.
@@ -317,8 +390,8 @@ class ImageMetaData:
                     'acq_dt': str(d_ephem),               # Image acquisition datetime.
                     'ref_dt': str(self.tle._epoch),       # Reference epoch.
                     'tle_age': d_ephem - self.tle._epoch, # TLE age (days).
-                    'lat': self.tle.sublat / degree,      # Latitude (deg).
-                    'lng': self.tle.sublong / degree,     # Longitude (deg).
+                    'lat': self.tle.sublat / ephem.degree,# Latitude (deg).
+                    'lng': self.tle.sublong / ephem.degree,# Longitude (deg).
                     'h': self.tle.elevation,              # Geocentric height above sea level (m).
                     'tle_ref_line1': self.tle_line1,      # Reference TLE line 1.
                     'tle_ref_line2': self.tle_line2       # Rererence TLE line 2.
@@ -382,12 +455,68 @@ class ImageMetaData:
             logger.info("No metadata data was collected.")
 
 
+class GeoJsonUtils:
+
+    def __init__(self, geojson_filename):
+        """Initialize the GeoJSON Utils class."""
+
+        try:
+
+            # load GeoJSON file containing polygons.
+            with open(geojson_filename) as f:
+                self.geojson = json.load(f)
+
+        except:
+            logger.exception("Failed to load GeoJSON file: " + geojson_filename)
+
+
+    def is_point_in_polygon(self, lat, lng):
+        """Check if given point coordinates is located inside the polygon defined in the GeoJSON file."""
+
+        # Default to False if GeoJSON file was not loaded.
+        if self.geojson is None:
+            return False
+
+        # Define a point based on the given longitude and latitude.
+        point = geometry.Point(lng, lat) 
+
+        # Check each feature to see if it contains the point.
+        for feature in self.geojson['features']:
+
+            # Features representing a continent can either by a Polygon or a MultiPolygon.
+            shape = geometry.shape(feature['geometry'])
+
+            # If the shape is a Polygon the check if it contains the given point.
+            if isinstance(shape, geometry.Polygon):
+
+                # Check if polygon contains point.
+                if polygon.contains(point):
+
+                    # The point is inside one of the shapes defined in the GeoJSON file.
+                    return True
+
+            # If the shape is a MultiPolygon then iterate through each Polygon.
+            elif isinstance(shape, geometry.MultiPolygon):
+            
+                # For each Polygon of the MultiPolygon.
+                for polygon in shape:
+
+                    # Check if polygon contains point.
+                    if polygon.contains(point):
+
+                        # The point is inside one of the shapes defined in the GeoJSON file.
+                        return True
+
+        # The given point is not in any target shapes.
+        return False
+
+
 class Fapec:
 
     bin_path = FAPEC_BIN_PATH
 
     def __init__(self, chunk, threads, dtype, band, losses, meaningful_bits, lev):
-        """Initialize the Fapec compression class."""
+        """Initialize the FAPEC compression class."""
 
         self.chunk = chunk
         self.threads = threads
@@ -486,7 +615,7 @@ class Utils:
                     # Multiple follw up models were defined.
                     # Log a warning that this is not ssupported.
                     # TODO: Support this case of "model branching". Look into approaching this with a node graph.
-                    logging.warning("Branching to multiple follow up models is currently unsupported. Selecting the first next model listed.")
+                    logger.warning("Branching to multiple follow up models is currently unsupported. Selecting the first next model listed.")
 
                     # Only follow up with the first follow up model that is listed.
                     next_model = label_split[1]
@@ -642,6 +771,7 @@ class Utils:
         df_output = subprocess.check_output(['df', '-h']).decode('utf-8')
         logger.info('Disk usage:\n' + df_output) 
 
+
 class HDCamera:
 
     def __init__(self, gains, exposure):
@@ -649,7 +779,7 @@ class HDCamera:
         self.exposure = exposure
 
     def acquire_image(self):
-        """Acquire and image with the on-board camera."""
+        """Acquire an image with the on-board camera."""
 
         # Build the image acquisition execution command string.
         cmd_image_acquisition = 'ims100_testapp -R {R} -G {G} -B {B} -c /dev/ttyACM0 -m /dev/sda -v 0 -n 1 -p -e {E} >> {L} 2>&1'.format(\
@@ -832,68 +962,117 @@ def run_experiment():
     # The config parser.
     cfg = AppConfig()
 
+    # Instanciate classes.
     utils = Utils()
-    camera = HDCamera(cfg.gen_gains, cfg.gen_exposure)
+    geojson_utils = GeoJsonUtils(cfg.gen_geojson)
+    camera = HDCamera(cfg.cam_gains, cfg.cam_exposure)
     img_editor = ImageEditor()
     img_classifier = ImageClassifier()
-    img_metadata = ImageMetaData(cfg.tle_path, cfg.gen_gains, cfg.gen_exposure)
-
-    # Flag and counter to keep track.
-    done = False
-    counter = 0
-
-    # Check if the experiment's toGround folder is below a configured quota before proceeding with the experiment.
-    try:
-        toGround_size = int(subprocess.check_output(['du', '-s', TOGROUND_PATH]).decode('utf-8').split()[0])
-        done = True if toGround_size >= cfg.quota_toGround else False
-
-        if done:
-            logger.info("Exiting: the experiment's toGround folder is greater than the configured quota: {TG} KB > {Q} KB.".format(\
-                TG=toGround_size,\
-                Q=cfg.quota_toGround))
-
-    except:
-        logger.exception("Exiting: failed to check disk space use of the experiment's toGround folder.")
-        done = False
+    img_metadata = ImageMetaData(cfg.tle_path, cfg.cam_gains, cfg.cam_exposure)
     
     # Instanciate a compressor object if a compression algorithm was specified and configured in the config.ini.
     raw_compressor = None
 
-    # Proceed with instanciate the compressor object in case the is not marked to stop.
-    if not done:
+    # Raw image file compression will only be applied if we enable compressed raw downlinking.
+    if cfg.downlink_compressed_raws and cfg.raw_compression_type == 'fapec' and cfg.init_compression_fapec_props() is True:
 
-        # Raw image file compression will only be applied if we enable compressed raw downlinking.
-        if cfg.downlink_compressed_raws and cfg.raw_compression_type == 'fapec' and cfg.init_compression_fapec_props() is True:
+        # Instanciate compression object that will be used to compress the raw image files.
+        raw_compressor = Fapec(cfg.compression_fapec_chunk,\
+            cfg.compression_fapec_threads,\
+            cfg.compression_fapec_dtype,\
+            cfg.compression_fapec_band,\
+            cfg.compression_fapec_losses,\
+            cfg.compression_fapec_meaningful_bits,\
+            cfg.compression_fapec_lev)
 
-            # Instanciate compression object that will be used to compress the raw image files.
-            raw_compressor = Fapec(cfg.compression_fapec_chunk,\
-                cfg.compression_fapec_threads,\
-                cfg.compression_fapec_dtype,\
-                cfg.compression_fapec_band,\
-                cfg.compression_fapec_losses,\
-                cfg.compression_fapec_meaningful_bits,\
-                cfg.compression_fapec_lev)
+        logger.info("Raw image file compression enabled: " + cfg.raw_compression_type + ".")
 
-            logger.info("Raw image file compression enabled: " + cfg.raw_compression_type + ".")
+    else:
+        # No compression will be applied to the raw image files.
+        logger.info("Raw image file compression disabled.")
 
-        else:
-            # No compression will be applied to the raw image files.
-            logger.info("Raw image file compression disabled.")
 
     # Default immage acquisition interval. Can be throttled when an acquired image is labeled to keep.
     image_acquisition_period = cfg.gen_interval
 
+    # Image acquisition loop flag and counter to keep track.
+    done = False
+    counter = 0
+
     # Image acquisition loop.
     while not done:
 
+        # Flag indicating whether or not we should skip the image acquisition and labeling process
+        # We want to skip in case some criteria is not met or in case we encounter an error.
+        success = True
+
+        # Init keep image flag indicating if we kepp the image.
+        keep_image = False
+
+        # Cleanup any files that may have been left over from a previous run that may have terminated ungracefully.
+        # Skip image acquisition in case of file deletion failure.
+        if utils.cleanup() < 0:
+            success = False
+
+        # Check if the experiment's toGround folder is below a configured quota before proceeding with image acquisition.
         try:
+            toGround_size = int(subprocess.check_output(['du', '-s', TOGROUND_PATH]).decode('utf-8').split()[0])
+            done = True if toGround_size >= cfg.quota_toGround else False
 
-            # Flag indicating if we should skip the image acquisition and labeling process in case of an encountered error.
-            success = True
+            if done:
+                # Exit the image acquisition loop in case toGround disk size is too large.
+                logger.info("Exiting: the experiment's toGround folder is greater than the configured quota: {TG} KB > {Q} KB.".format(\
+                    TG=toGround_size,\
+                    Q=cfg.quota_toGround))
 
-            # Cleanup any files that may have been left over from a previous run that may have terminated ungracefully.
-            if utils.cleanup() < 0:
-                success = False
+                # Break out the image acquisition loop.
+                break
+
+        except:
+            # Exit the image acquisition loop in case of exception.
+            logger.exception("Exiting: failed to check disk space use of the experiment's toGround folder.")
+            break
+
+        try:
+            # If the image acquisition type is AOI then only acquire an image if the spacecraft is located above an area of interest.
+            # Areas of interests are defined as geophraphic shapes represented by polygons listed in the GeoJSON file.
+            if cfg.gen_type == GEN_TYPE_AOI:
+                
+                try:
+                    # Get the coordinates of the spacecraft's current groundtrack position.
+                    coords = img_metadata.get_groundtrack_coordinates()
+
+                    # Proceed if groundtrack coordinates successfully fetched.
+                    if coords is not None:
+
+                        # Find out if it is daytime at the point directly below the spacecraft (i.e. at the point coordinate of the spacecraft's groundtrack position).
+                        is_daytime = img_metadata.is_daytime(coords['lat'], coords['lng'], coords['dt'])
+                    
+                        # If the groundtrack coordinates are above a point on Earth's surface where it is daylight then proceed in checking if we are above an area of interest.
+                        if is_daytime:
+
+                            # Check if the spacecraft is above an area of interest.
+                            # Continue with the image acquisition if it is by setting the success flag to True.
+                            success = geojson_utils.is_point_in_polygon(coords['lat'] / ephem.degree, coords['lng'] / ephem.degree)
+
+                        else:
+                            # It's nightime so skip image acquisition.
+                            success = False
+
+                    else:
+                        # Skip this image acquisition loop if ground track coordinates not fetched.
+                        logger.error("Skipping image acquisition: failed to fetch groundtrack coordinates.")
+                        success = False
+
+                except:
+                    # Skip this image acquisition loop if an unexpected exception occurred.
+                    logger.exception("Failed to acquire image based on geographic area of interest.")
+                    success = False
+
+            # If we are skipping image acquisition then reset the image acquisition period to the default value.
+            # Do this in case the period was throttled in the previous iteration of the image acquisition loop.
+            if not success:
+                image_acquisition_period = cfg.gen_interval
 
             # If experiment's root directory is clean, i.e. no images left over from a previous image acquisition, then acquire a new image.
             if success:
@@ -1030,7 +1209,7 @@ def run_experiment():
                     utils.move_images_for_keeping(cfg.raw_keep, cfg.png_keep, applied_label)
 
                     # An image of interest has been acquired: throttle image acquisition frequency.
-                    image_acquisition_period =  cfg.gen_interval_throttle
+                    image_acquisition_period = cfg.gen_interval_throttle
 
         except:
             # In case of exception just log the stack trace and proceed to the next image acquisition iteration.
@@ -1039,12 +1218,25 @@ def run_experiment():
         # Error handling here to not risk an unlikely infinite loop.
         try:
 
-            # Increment image acquisition labeling counter.
-            counter = counter + 1
+            # Flag indicating if AOI image was acquired. Use this flag to determine if the loop counter gets incremented or not.
+            # If image aquisition is set to AOI but an image is not acquired then don't increment the counter for this iteration.
+            # This is because in AOI mode the maximum counter value is the total number of images we want to acquire rather than
+            # the maximum number of labelled images (as is the case for the Looping mode for image aquisition).
+            if cfg.gen_type == GEN_TYPE_AOI:
+                if keep_image:
+                    counter = counter + 1
+
+            else: # Increment image acquisition labeling counter for the polling mode.
+                counter = counter + 1
+
 
             # Wait the configured sleep time before proceeding to the next image acquisition and labeling.
             if counter < cfg.gen_number:
-                logger.info("Wait {T} seconds...".format(T=image_acquisition_period))
+
+                # Don't span the log in case of a long run for image acquisition type "aoi".
+                if cfg.gen_type != GEN_TYPE_AOI:
+                    logger.info("Wait {T} seconds...".format(T=image_acquisition_period))
+
                 time.sleep(image_acquisition_period)
             else:
                 logger.info("Image acquisition loop completed.")
@@ -1060,6 +1252,7 @@ def run_experiment():
             # Log the exception and exit the loop.
             logger.exception("An unlikely failure occured while waiting for the next image acquisition.")
             done = True
+            
 
     # We have exited the image acquisition and labeling loop.
     # This means that we have finished labeling the acquired images. 
