@@ -1034,10 +1034,14 @@ def run_experiment():
             # Split and move tar to filestore's toGround folder.
             utils.split_and_move_tar(tar_path, cfg.downlink_compressed_split)
 
-    # Now we can start logging for tihs experiment's run. Init and configure the logger.
+
+    # WARNING:  Logging is only initialized here.
+    #           Prior to this point attemps to log anything will result in an error.
+    #           Now we can start logging for tihs experiment's run. Init and configure the logger.
     formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
     logging.Formatter.converter = time.gmtime
     logger = setup_logger('smartcam_logger', LOG_FILE, formatter, level=logging.INFO)
+
 
     # If files were left over from previous experiment runs they they were tarred, split, and moved for downlinking.
     # Log this operation. This creates the first log entries for this experiment's run.
