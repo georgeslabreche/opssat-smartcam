@@ -967,10 +967,6 @@ class ImageClassifier:
 def run_experiment():
     """Run the experiment."""
 
-    # At this point only instanciate classes that:"
-    # - Are required to package files from previous runs that may have been left over due to an abrupt termination of a previous run.
-    # - Do not produce any logs so that logs created for this experiment's run are not packaged with files leftover from previous run(s).
-
     # WARNING:  The logger has not yet been initialized.
     #           Make sure that no logging happens until we have initialized the logger.
     #           We are doing this because in case we are have log files left over from previous runs then we want to tar and downlink those
@@ -978,6 +974,10 @@ def run_experiment():
     #
     # FIXME:    Come up with a more elegant solution so that we can start logging right away.
     #           Maybe just filter out this run's log from the tarring process based on its timestamped filename.
+
+    # At this point only instanciate classes that:
+    #   1) Are required to package files from previous runs that may have been left over due to an abrupt termination of a previous run.
+    #   2) Do not produce any logs so that logs created for this experiment's run are not packaged with files leftover from previous run(s).
 
     # The config parser.
     cfg = AppConfig()
