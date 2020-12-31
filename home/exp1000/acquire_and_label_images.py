@@ -657,7 +657,7 @@ class Utils:
         os.system(cmd_move_images)
 
 
-    def package_files_for_downlinking(self, file_ext, downlink_log_if_no_images):
+    def package_files_for_downlinking(self, file_ext, downlink_log_if_no_images, files_from_previous_runs):
         """Package the files for downlinking."""
         try:
 
@@ -671,7 +671,7 @@ class Utils:
                     TG=TOGROUND_PATH,\
                     FILE_EXT=file_ext,\
                     expID=EXP_ID,\
-                    D=START_TIME.strftime("%Y%m%d_%H%M%S"),\
+                    D=START_TIME.strftime("%Y%m%d_%H%M%S") + ("_previous" if files_from_previous_runs else ""),\
                     TAR_EXT=tar_ext)
 
             # Count how many images were kept and moved to the experiment's toGround folder.
@@ -707,7 +707,7 @@ class Utils:
                     TG=TOGROUND_PATH,\
                     FILE_EXT='logs',\
                     expID=EXP_ID,\
-                    D=START_TIME.strftime("%Y%m%d_%H%M%S"),\
+                    D=START_TIME.strftime("%Y%m%d_%H%M%S") + ("_previous" if files_from_previous_runs else ""),\
                     TAR_EXT=tar_ext)
 
                 # Use tar to package log files into the filestore's toGround folder.
@@ -987,9 +987,30 @@ def run_experiment():
 
         logger.info("Raw image file compression enabled: " + cfg.raw_compression_type + ".")
 
-    else:
-        # No compression will be applied to the raw image files.
-        logger.info("Raw image file compression disabled.")
+
+    # Two cases that would cause thumbnails that have not been downlinked and we want to downlink them now:
+    #
+    #   1) If the experiment was terminated in a previous run before it had a chance to exit the image acquisition loop then we might have some logs and images that weren't tarred and moved for downlink.
+    #      Check if these files exist before starting the experiment and move them to the filestore's toGround folder for downlinking.
+    #
+    #   2) If previous runs had downlink_thumbnails set to "no" in the config.ini but now that conig parameter is set to "yes".
+    #      We first want to downlink the past thumbnails so that this experiment run can package its own thumbnails that do not include those from previous runs.
+
+    # Package thumbnails for downlinking.
+    if cfg.downlink_thumbnails:
+        tar_path = utils.package_files_for_downlinking("jpeg", cfg.downlink_log_if_no_images, START_TIME, True)
+
+        if tar_path is not None:
+            logger.info("Tarred for downlink the thumbnail and/or log files from the previous run(s).")
+            utils.split_and_move_tar(tar_path, cfg.downlink_compressed_split)
+
+    # Package compressed raws for downlinking.
+    if cfg.downlink_compressed_raws and raw_compressor is not None:
+        tar_path = utils.package_files_for_downlinking(cfg.raw_compression_type, cfg.downlink_log_if_no_images, False)
+
+        if tar_path is not None:
+            logger.info("Tarred for downlink the compressed raw and/or log files from previous run(s).")
+            utils.split_and_move_tar(tar_path, cfg.downlink_compressed_split)
 
 
     # Default immage acquisition interval. Can be throttled when an acquired image is labeled to keep.
@@ -1268,14 +1289,14 @@ def run_experiment():
 
     # Package thumbnails for downlinking.
     if cfg.downlink_thumbnails:
-        tar_path = utils.package_files_for_downlinking("jpeg", cfg.downlink_log_if_no_images)
+        tar_path = utils.package_files_for_downlinking("jpeg", cfg.downlink_log_if_no_images, False)
 
         if tar_path is not None:
             utils.split_and_move_tar(tar_path, cfg.downlink_compressed_split)
 
     # Package compressed raws for downlinking.
     if cfg.downlink_compressed_raws and raw_compressor is not None:
-        tar_path = utils.package_files_for_downlinking(cfg.raw_compression_type, cfg.downlink_log_if_no_images)
+        tar_path = utils.package_files_for_downlinking(cfg.raw_compression_type, cfg.downlink_log_if_no_images, False)
 
         if tar_path is not None:
             utils.split_and_move_tar(tar_path, cfg.downlink_compressed_split)
