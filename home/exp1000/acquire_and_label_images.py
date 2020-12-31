@@ -433,14 +433,13 @@ class ImageMetaData:
     def write_metadata(self, csv_filename, metadata):
         """Write collected metadata into a CSV file."""
 
+        # If file exists it means that it has a header already.
+        existing_csv_file = Path(csv_filename)
+        has_header = existing_csv_file.is_file():
+
         # Open CSV file and write an image metadata row for the acquired image.
         with open(csv_filename, 'a', newline='') as csv_file:
             writer = csv.DictWriter(csv_file, fieldnames=self.FIELD_NAMES)
-
-            # Check if the csv file already has a header or not.
-            sniffer = csv.Sniffer()
-            has_header = sniffer.has_header(csv_file.read(32))
-            csvfile.seek(0)
 
             # Write header if it's not already there:
             if has_header is False:
