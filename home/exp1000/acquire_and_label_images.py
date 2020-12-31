@@ -280,9 +280,6 @@ class ImageMetaData:
         self.gains = gains
         self.exposure = exposure
 
-        # The list that will contain metadata dictionary entries.
-        self.metadata_list = []
-
 
     def get_groundtrack_coordinates(self):
         """Get coordinates of the geographic point beneath the satellite."""
@@ -352,7 +349,7 @@ class ImageMetaData:
         timestamp = None
         
         # The dictionary that will contain the image's computed metadata.
-        metadata = {}
+        metadata = None
 
         # The filename without the path and without the extension
         filename = filename_png.replace(BASE_PATH + "/", "").replace(".png", "")
@@ -429,30 +426,28 @@ class ImageMetaData:
                 # No reason for this to occur but here nevertheless, just in case.
                 logger.exception("Failed to collect metadata.")
 
-        # Append metadata to the dictionary. 
-        # Will be written into a CSV file at the end of the image acquisition loop.
-        if len(metadata) > 0:
-            self.metadata_list.append(metadata)
-        
+        # Return the metadata. Will be None in case of error.
+        return metadata
 
-    def write_metadata(self, csv_filename):
+
+    def write_metadata(self, csv_filename, metadata):
         """Write collected metadata into a CSV file."""
 
-        if len(self.metadata_list) > 0:
+        # Open CSV file and write an image metadata row for the acquired image.
+        with open(csv_filename, 'a', newline='') as csv_file:
+            writer = csv.DictWriter(csv_file, fieldnames=self.FIELD_NAMES)
 
-            # Open CSV file and start writing image metadata row for each image acquired.
-            with open(csv_filename, 'w', newline='') as csv_file:
-                writer = csv.DictWriter(csv_file, fieldnames=self.FIELD_NAMES)
+            # Check if the csv file already has a header or not.
+            sniffer = csv.Sniffer()
+            has_header = sniffer.has_header(csv_file.read(32))
+            csvfile.seek(0)
 
-                # Write header.
+            # Write header if it's not already there:
+            if has_header is False:
                 writer.writeheader()
 
-                # Write image metadata row.
-                for metadata in self.metadata_list:
-                    writer.writerow(metadata)
-
-        else:
-            logger.info("No metadata data was collected.")
+            # Write image metadata row.
+            writer.writerow(metadata)
 
 
 class GeoJsonUtils:
@@ -1238,7 +1233,11 @@ def run_experiment():
                 
                 # Collect image metadata. Even for images that will not be kept.
                 if predictions_dict is not None and cfg.collect_metadata:
-                    img_metadata.collect_metadata(file_png, applied_label, applied_label_confidence, keep_image)
+                    metadata = img_metadata.collect_metadata(file_png, applied_label, applied_label_confidence, keep_image)
+                    
+                    # Write metadata to a CSV file.
+                    if metadata is not None:
+                        img_metadata.write_metadata(METADATA_CSV_FILE, metadata)
 
                 # Remove the image if it is not labeled for keeping.
                 if not keep_image:
@@ -1332,10 +1331,6 @@ def run_experiment():
 
     # Log some housekeeping data.
     utils.log_housekeeping_data()
-
-    # Write metadata CSV file.
-    if cfg.collect_metadata:
-        img_metadata.write_metadata(METADATA_CSV_FILE)
 
     # Tar the images and the log files for downlinking.
 
