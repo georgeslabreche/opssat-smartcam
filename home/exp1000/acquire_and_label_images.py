@@ -182,7 +182,7 @@ class AppConfig:
         # Image generation type: polling or area of interest (AOI).
         self.gen_type = self.config.get('gen', 'gen_type')
 
-        self.gen_interval = self.config.getfloat('gen', 'gen_interval')
+        self.gen_interval_default = self.config.getfloat('gen', 'gen_interval_default')
 
         self.gen_interval_throttle = self.config.getfloat('gen', 'gen_interval_throttle')
 
@@ -280,9 +280,6 @@ class ImageMetaData:
         self.gains = gains
         self.exposure = exposure
 
-        # The list that will contain metadata dictionary entries.
-        self.metadata_list = []
-
 
     def get_groundtrack_coordinates(self):
         """Get coordinates of the geographic point beneath the satellite."""
@@ -352,7 +349,7 @@ class ImageMetaData:
         timestamp = None
         
         # The dictionary that will contain the image's computed metadata.
-        metadata = {}
+        metadata = None
 
         # The filename without the path and without the extension
         filename = filename_png.replace(BASE_PATH + "/", "").replace(".png", "")
@@ -429,30 +426,27 @@ class ImageMetaData:
                 # No reason for this to occur but here nevertheless, just in case.
                 logger.exception("Failed to collect metadata.")
 
-        # Append metadata to the dictionary. 
-        # Will be written into a CSV file at the end of the image acquisition loop.
-        if len(metadata) > 0:
-            self.metadata_list.append(metadata)
-        
+        # Return the metadata. Will be None in case of error.
+        return metadata
 
-    def write_metadata(self, csv_filename):
+
+    def write_metadata(self, csv_filename, metadata):
         """Write collected metadata into a CSV file."""
 
-        if len(self.metadata_list) > 0:
+        # If file exists it means that it has a header already.
+        existing_csv_file = Path(csv_filename)
+        has_header = existing_csv_file.is_file()
 
-            # Open CSV file and start writing image metadata row for each image acquired.
-            with open(csv_filename, 'w', newline='') as csv_file:
-                writer = csv.DictWriter(csv_file, fieldnames=self.FIELD_NAMES)
+        # Open CSV file and write an image metadata row for the acquired image.
+        with open(csv_filename, 'a', newline='') as csv_file:
+            writer = csv.DictWriter(csv_file, fieldnames=self.FIELD_NAMES)
 
-                # Write header.
+            # Write header if it's not already there:
+            if has_header is False:
                 writer.writeheader()
 
-                # Write image metadata row.
-                for metadata in self.metadata_list:
-                    writer.writerow(metadata)
-
-        else:
-            logger.info("No metadata data was collected.")
+            # Write image metadata row.
+            writer.writerow(metadata)
 
 
 class GeoJsonUtils:
@@ -657,8 +651,12 @@ class Utils:
         os.system(cmd_move_images)
 
 
-    def package_files_for_downlinking(self, file_ext, downlink_log_if_no_images):
-        """Package the files for downlinking."""
+    def package_files_for_downlinking(self, file_ext, downlink_log_if_no_images, experiment_start_time, files_from_previous_runs, do_logging):
+        """Package the files for downlinking.
+        
+        Logging is optional via the do_logging flag in case we start the experiment by tarring files leftover from a previous run that was abruptly interrupted.
+        In that case we don't want to prematurely write a new log file for the current experiment run or else it's going to end up being tarred with the previous experiment run(s).
+        """
         try:
 
             # Don't use gzip if files are already a compression file type.
@@ -671,7 +669,7 @@ class Utils:
                     TG=TOGROUND_PATH,\
                     FILE_EXT=file_ext,\
                     expID=EXP_ID,\
-                    D=START_TIME.strftime("%Y%m%d_%H%M%S"),\
+                    D=experiment_start_time.strftime("%Y%m%d_%H%M%S") + ("_previous" if files_from_previous_runs else ""),\
                     TAR_EXT=tar_ext)
 
             # Count how many images were kept and moved to the experiment's toGround folder.
@@ -684,7 +682,8 @@ class Utils:
             if image_count > 0:
 
                 # Log that we are tarring some images.
-                logger.info("Tarring {T} file(s) for downlink.".format(T=image_count))
+                if do_logging:
+                    logger.info("Tarring {T} file(s) for downlink.".format(T=image_count))
 
                 # Use tar to package image and log files into the filestore's toGround folder.
                 os.system('tar {TAR_O} {TAR_PATH} {G}/**/*.{FILE_EXT} {L}/*.log {L}/*.csv --remove-files'.format(\
@@ -700,14 +699,15 @@ class Utils:
             elif downlink_log_if_no_images is True and log_count > 0:
 
                 # Log that we are only tarring log files.
-                logger.info("No image(s) kept but tarring logs for downlink.")
+                if do_logging:
+                    logger.info("No image(s) kept but tarring logs for downlink.")
 
                 # The destination tar file path for the packaged files.
                 tar_path = '{TG}/opssat_smartcam_{FILE_EXT}_exp{expID}_{D}.{TAR_EXT}'.format(\
                     TG=TOGROUND_PATH,\
                     FILE_EXT='logs',\
                     expID=EXP_ID,\
-                    D=START_TIME.strftime("%Y%m%d_%H%M%S"),\
+                    D=experiment_start_time.strftime("%Y%m%d_%H%M%S") + ("_previous" if files_from_previous_runs else ""),\
                     TAR_EXT=tar_ext)
 
                 # Use tar to package log files into the filestore's toGround folder.
@@ -721,14 +721,16 @@ class Utils:
 
             else:
                 # No images and no logs. Unlikely.
-                logger.info("No images(s) kept nor logs produced for downlink.")
+                if do_logging:
+                    logger.info("No images(s) kept nor logs produced for downlink.")
 
                 # Return None.
                 return None
 
         except:
             # In case this happens, the image will be tarred at the end of the next experiment's run unless explicitely deleted.
-            logger.exception("Failed to tar kept image for downlink (if any).")
+            if do_logging:
+                logger.exception("Failed to tar kept image for downlink (if any).")
 
             # Return None.
             return None
@@ -959,16 +961,23 @@ class ImageClassifier:
 def run_experiment():
     """Run the experiment."""
 
+    # WARNING:  The logger has not yet been initialized.
+    #           Make sure that no logging happens until we have initialized the logger.
+    #           We are doing this because in case we are have log files left over from previous runs then we want to tar and downlink those
+    #           before we start this experiment run and in that process we don't want to include logs created during this experiment's run.
+    #
+    # FIXME:    Come up with a more elegant solution so that we can start logging right away.
+    #           Maybe just filter out this run's log from the tarring process based on its timestamped filename.
+
+    # At this point only instanciate classes that:
+    #   1) Are required to package files from previous runs that may have been left over due to an abrupt termination of a previous run.
+    #   2) Do not produce any logs so that logs created for this experiment's run are not packaged with files leftover from previous run(s).
+
     # The config parser.
     cfg = AppConfig()
 
-    # Instanciate classes.
+    # The utils object.
     utils = Utils()
-    geojson_utils = GeoJsonUtils(cfg.gen_geojson)
-    camera = HDCamera(cfg.cam_gains, cfg.cam_exposure)
-    img_editor = ImageEditor()
-    img_classifier = ImageClassifier()
-    img_metadata = ImageMetaData(cfg.tle_path, cfg.cam_gains, cfg.cam_exposure)
     
     # Instanciate a compressor object if a compression algorithm was specified and configured in the config.ini.
     raw_compressor = None
@@ -985,15 +994,73 @@ def run_experiment():
             cfg.compression_fapec_meaningful_bits,\
             cfg.compression_fapec_lev)
 
-        logger.info("Raw image file compression enabled: " + cfg.raw_compression_type + ".")
+    # Two cases that would cause files that have not been downlinked and we want to downlink them now:
+    #
+    #   1) If the experiment was terminated in a previous run before it had a chance to exit the image acquisition loop then we might have some logs and images that weren't tarred and moved for downlink.
+    #      Check if these files exist before starting the experiment and move them to the filestore's toGround folder for downlinking.
+    #
+    #   2) If previous runs had downlink_thumbnails set to "no" in the config.ini but now that conig parameter is set to "yes".
+    #      We first want to downlink the past thumbnails so that this experiment run can package its own thumbnails that do not include those from previous runs.
+    #
+    # IMPORTANT: Do this before we start logging for the current run or else this run's log will be included in the previous run(s)' tar and downlink.
+    prev_run_tar_jpeg = False
+    prev_run_tar_raws = False
 
-    else:
-        # No compression will be applied to the raw image files.
-        logger.info("Raw image file compression disabled.")
+    # Package thumbnails for downlinking.
+    if cfg.downlink_thumbnails:
+        tar_path = utils.package_files_for_downlinking("jpeg", cfg.downlink_log_if_no_images, START_TIME, True, False)
 
+        if tar_path is not None:
+            # Use this flag to log later so that we don't create a new log file now that will end up being packaged if we are also tarring raw image files generated in previous runs.
+            prev_run_tar_jpeg = True
+
+            # Split and move tar to filestore's toGround folder.
+            utils.split_and_move_tar(tar_path, cfg.downlink_compressed_split)
+
+    # Package compressed raws for downlinking.
+    if cfg.downlink_compressed_raws and raw_compressor is not None:
+        tar_path = utils.package_files_for_downlinking(cfg.raw_compression_type, cfg.downlink_log_if_no_images, START_TIME, True, False)
+
+        if tar_path is not None:
+            # This is not necessary here since ther eis no more tarring of previous files after this point but kept this way for consistency.
+            prev_run_tar_raws = True
+
+            # Split and move tar to filestore's toGround folder.
+            utils.split_and_move_tar(tar_path, cfg.downlink_compressed_split)
+
+
+    # WARNING:  Logging is only initialized here.
+    #           Prior to this point attemps to log anything will result in an error.
+    #           Now we can start logging for tihs experiment's run. Init and configure the logger.
+    formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+    logging.Formatter.converter = time.gmtime
+
+    # Make sure that the logger object being set is the global logger variable.
+    global logger
+    logger = setup_logger('smartcam_logger', LOG_FILE, formatter, level=logging.INFO)
+
+
+    # If files were left over from previous experiment runs they they were tarred, split, and moved for downlinking.
+    # Log this operation. This creates the first log entries for this experiment's run.
+    if prev_run_tar_jpeg:
+        logger.info("Tarred for downlink the thumbnail and/or log files from the previous run(s).")
+
+    if prev_run_tar_raws:
+        logger.info("Tarred for downlink the compressed raw and/or log files from previous run(s).")
+
+    # Instanciate remaining required classes.
+    camera = HDCamera(cfg.cam_gains, cfg.cam_exposure)
+    img_editor = ImageEditor()
+    img_classifier = ImageClassifier() 
+
+    # This initializations will write in the log file in case of exception.
+    # So we make sure they are initialize after we've packaged logs that may remain from previous runs.
+    # If there were no files remaining from previous files then exceptions tha tmay be thrown here will be the first log entries for this experiment's run.
+    img_metadata = ImageMetaData(cfg.tle_path, cfg.cam_gains, cfg.cam_exposure)
+    geojson_utils = GeoJsonUtils(cfg.gen_geojson)
 
     # Default immage acquisition interval. Can be throttled when an acquired image is labeled to keep.
-    image_acquisition_period = cfg.gen_interval
+    image_acquisition_period = cfg.gen_interval_default
 
     # Image acquisition loop flag and counter to keep track.
     done = False
@@ -1072,7 +1139,7 @@ def run_experiment():
             # If we are skipping image acquisition then reset the image acquisition period to the default value.
             # Do this in case the period was throttled in the previous iteration of the image acquisition loop.
             if not success:
-                image_acquisition_period = cfg.gen_interval
+                image_acquisition_period = cfg.gen_interval_default
 
             # If experiment's root directory is clean, i.e. no images left over from a previous image acquisition, then acquire a new image.
             if success:
@@ -1165,7 +1232,11 @@ def run_experiment():
                 
                 # Collect image metadata. Even for images that will not be kept.
                 if predictions_dict is not None and cfg.collect_metadata:
-                    img_metadata.collect_metadata(file_png, applied_label, applied_label_confidence, keep_image)
+                    metadata = img_metadata.collect_metadata(file_png, applied_label, applied_label_confidence, keep_image)
+                    
+                    # Write metadata to a CSV file.
+                    if metadata is not None:
+                        img_metadata.write_metadata(METADATA_CSV_FILE, metadata)
 
                 # Remove the image if it is not labeled for keeping.
                 if not keep_image:
@@ -1173,7 +1244,7 @@ def run_experiment():
                     logger.info("Ditching the image.")
 
                     # The acquired image is not of interest: fall back the default image acquisition frequency.
-                    image_acquisition_period = cfg.gen_interval
+                    image_acquisition_period = cfg.gen_interval_default
 
                     # Remove image.
                     utils.cleanup()
@@ -1260,22 +1331,18 @@ def run_experiment():
     # Log some housekeeping data.
     utils.log_housekeeping_data()
 
-    # Write metadata CSV file.
-    if cfg.collect_metadata:
-        img_metadata.write_metadata(METADATA_CSV_FILE)
-
     # Tar the images and the log files for downlinking.
 
     # Package thumbnails for downlinking.
     if cfg.downlink_thumbnails:
-        tar_path = utils.package_files_for_downlinking("jpeg", cfg.downlink_log_if_no_images)
+        tar_path = utils.package_files_for_downlinking("jpeg", cfg.downlink_log_if_no_images, START_TIME, False, True)
 
         if tar_path is not None:
             utils.split_and_move_tar(tar_path, cfg.downlink_compressed_split)
 
     # Package compressed raws for downlinking.
     if cfg.downlink_compressed_raws and raw_compressor is not None:
-        tar_path = utils.package_files_for_downlinking(cfg.raw_compression_type, cfg.downlink_log_if_no_images)
+        tar_path = utils.package_files_for_downlinking(cfg.raw_compression_type, cfg.downlink_log_if_no_images, START_TIME, False, True)
 
         if tar_path is not None:
             utils.split_and_move_tar(tar_path, cfg.downlink_compressed_split)
@@ -1303,13 +1370,7 @@ def setup_logger(name, log_file, formatter, level=logging.INFO):
 
 
 if __name__ == '__main__':
-    """Run the main program function after initializing the logger and timer."""
-
-    # Init and configure the logger.
-    formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
-    logging.Formatter.converter = time.gmtime
-    
-    logger = setup_logger('smartcam_logger', LOG_FILE, formatter, level=logging.INFO)
+    """Run the main program loop."""
 
     # Start the app.
     run_experiment()

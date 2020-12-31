@@ -71,7 +71,7 @@ There are two types of image acquisition that can beet set: Polling or Area-of-I
 
 #### 4.2.3. Acquisition Type
 - *gen_type* - can be either `aoi` or `poll` for "area-of-interest" or "polling", respectively.
-- *gen_interval* - wait time between image acquisition loop iterations (in seconds).
+- *gen_interval_default* - wait time between image acquisition loop iterations (in seconds).
 - *gen_interval_throttle* - wait time between image acquisition loop iterations when a label of interest has been applied to the previously acquired image (in seconds).
 - *gen_number* - number of image acquisitions.
 - *gen_geojson* - path of the GeoJSON file with polygons defining areas of interest for image acquisition.
