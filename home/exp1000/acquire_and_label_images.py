@@ -967,15 +967,17 @@ class ImageClassifier:
 def run_experiment():
     """Run the experiment."""
 
-    # Init and configure the logger.
-    formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
-    logging.Formatter.converter = time.gmtime
-    
-    logger = setup_logger('smartcam_logger', LOG_FILE, formatter, level=logging.INFO)
-
-    # At this point only instanciate classes that"
+    # At this point only instanciate classes that:"
     # - Are required to package files from previous runs that may have been left over due to an abrupt termination of a previous run.
     # - Do not produce any logs so that logs created for this experiment's run are not packaged with files leftover from previous run(s).
+
+    # WARNING:  The logger has not yet been initialized.
+    #           Make sure that no logging happens until we have initialized the logger.
+    #           We are doing this because in case we are have log files left over from previous runs then we want to tar and downlink those
+    #           before we start this experiment run and in that process we don't want to include logs created during this experiment's run.
+    #
+    # FIXME:    Come up with a more elegant solution so that we can start logging right away.
+    #           Maybe just filter out this run's log from the tarring process based on its timestamped filename.
 
     # The config parser.
     cfg = AppConfig()
@@ -997,7 +999,6 @@ def run_experiment():
             cfg.compression_fapec_losses,\
             cfg.compression_fapec_meaningful_bits,\
             cfg.compression_fapec_lev)
-
 
     # Two cases that would cause files that have not been downlinked and we want to downlink them now:
     #
@@ -1032,6 +1033,11 @@ def run_experiment():
 
             # Split and move tar to filestore's toGround folder.
             utils.split_and_move_tar(tar_path, cfg.downlink_compressed_split)
+
+    # Now we can start logging for tihs experiment's run. Init and configure the logger.
+    formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+    logging.Formatter.converter = time.gmtime
+    logger = setup_logger('smartcam_logger', LOG_FILE, formatter, level=logging.INFO)
 
     # If files were left over from previous experiment runs they they were tarred, split, and moved for downlinking.
     # Log this operation. This creates the first log entries for this experiment's run.
