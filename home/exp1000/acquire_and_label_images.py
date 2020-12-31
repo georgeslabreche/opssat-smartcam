@@ -1040,6 +1040,9 @@ def run_experiment():
     #           Now we can start logging for tihs experiment's run. Init and configure the logger.
     formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
     logging.Formatter.converter = time.gmtime
+
+    # Make sure that the logger object being set is the global logger variable.
+    global logger
     logger = setup_logger('smartcam_logger', LOG_FILE, formatter, level=logging.INFO)
 
 
