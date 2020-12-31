@@ -182,7 +182,7 @@ class AppConfig:
         # Image generation type: polling or area of interest (AOI).
         self.gen_type = self.config.get('gen', 'gen_type')
 
-        self.gen_interval = self.config.getfloat('gen', 'gen_interval')
+        self.gen_interval_default = self.config.getfloat('gen', 'gen_interval_default')
 
         self.gen_interval_throttle = self.config.getfloat('gen', 'gen_interval_throttle')
 
@@ -1061,7 +1061,7 @@ def run_experiment():
     geojson_utils = GeoJsonUtils(cfg.gen_geojson)
 
     # Default immage acquisition interval. Can be throttled when an acquired image is labeled to keep.
-    image_acquisition_period = cfg.gen_interval
+    image_acquisition_period = cfg.gen_interval_default
 
     # Image acquisition loop flag and counter to keep track.
     done = False
@@ -1140,7 +1140,7 @@ def run_experiment():
             # If we are skipping image acquisition then reset the image acquisition period to the default value.
             # Do this in case the period was throttled in the previous iteration of the image acquisition loop.
             if not success:
-                image_acquisition_period = cfg.gen_interval
+                image_acquisition_period = cfg.gen_interval_default
 
             # If experiment's root directory is clean, i.e. no images left over from a previous image acquisition, then acquire a new image.
             if success:
@@ -1245,7 +1245,7 @@ def run_experiment():
                     logger.info("Ditching the image.")
 
                     # The acquired image is not of interest: fall back the default image acquisition frequency.
-                    image_acquisition_period = cfg.gen_interval
+                    image_acquisition_period = cfg.gen_interval_default
 
                     # Remove image.
                     utils.cleanup()
