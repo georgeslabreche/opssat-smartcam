@@ -435,7 +435,7 @@ class ImageMetaData:
 
         # If file exists it means that it has a header already.
         existing_csv_file = Path(csv_filename)
-        has_header = existing_csv_file.is_file():
+        has_header = existing_csv_file.is_file()
 
         # Open CSV file and write an image metadata row for the acquired image.
         with open(csv_filename, 'a', newline='') as csv_file:
