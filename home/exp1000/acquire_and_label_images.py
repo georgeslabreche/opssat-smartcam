@@ -114,6 +114,9 @@ class AppConfig:
         # Size quota for the experiment's toGround folder.
         self.quota_toGround = self.config.getint('conf', 'quota_toGround')
 
+        # Maximum of errors before exiting program loop.
+        self.max_error_count = self.config.getint('conf', 'max_error_count')
+
 
     def init_model_props(self, model_name):
         """Fetch model configuration parameters."""
@@ -1066,11 +1069,37 @@ def run_experiment():
     done = False
     counter = 0
 
+    # Flag indicating whether or not we should skip the image acquisition and labeling process
+    # We want to skip in case some criteria is not met or in case we encounter an error.
+    success = True
+
+    # Error counter.
+    # Exit image acquisition loop when the maximum error count is reached.
+    # The maxiumum error count is set in the config.ini.
+    error_count = 0
+
     # Image acquisition loop.
     while not done:
 
-        # Flag indicating whether or not we should skip the image acquisition and labeling process
-        # We want to skip in case some criteria is not met or in case we encounter an error.
+        # Use the existance of a png file as an inficator on whether or not an image was successfully acquired.
+        file_png = None
+
+        # If the previous image acquisition loop iteration was skipped due to an error.
+        if not success:
+
+            # Increment error counter.
+            error_count = error_count + 1
+            
+            # Reset the image acquisition period to the default value.
+            # Do this in case the period was throttled in the previous iteration of the image acquisition loop.
+            image_acquisition_period = cfg.gen_interval_default
+
+            if error_count >= cfg.max_error_count:
+                # Maximum error count reached. Exit image acquisition loop to terminate application.
+                logger.info("Exit image acquisition loop: reached meximum error count.")
+                break
+       
+        # Start of a new image acquisition loop iteration. Assume success.
         success = True
 
         # Init keep image flag indicating if we kepp the image.
@@ -1104,6 +1133,10 @@ def run_experiment():
             # If the image acquisition type is AOI then only acquire an image if the spacecraft is located above an area of interest.
             # Areas of interests are defined as geophraphic shapes represented by polygons listed in the GeoJSON file.
             if cfg.gen_type == GEN_TYPE_AOI:
+
+                # Assumptions for AOI image acquisition mode.
+                is_daytime = False
+                is_in_aoi = False
                 
                 try:
                     # Get the coordinates of the spacecraft's current groundtrack position.
@@ -1120,11 +1153,7 @@ def run_experiment():
 
                             # Check if the spacecraft is above an area of interest.
                             # Continue with the image acquisition if it is by setting the success flag to True.
-                            success = geojson_utils.is_point_in_polygon(coords['lat'] / ephem.degree, coords['lng'] / ephem.degree)
-
-                        else:
-                            # It's nightime so skip image acquisition.
-                            success = False
+                            is_in_aoi = geojson_utils.is_point_in_polygon(coords['lat'] / ephem.degree, coords['lng'] / ephem.degree)
 
                     else:
                         # Skip this image acquisition loop if ground track coordinates not fetched.
@@ -1136,151 +1165,157 @@ def run_experiment():
                     logger.exception("Failed to acquire image based on geographic area of interest.")
                     success = False
 
-            # If we are skipping image acquisition then reset the image acquisition period to the default value.
-            # Do this in case the period was throttled in the previous iteration of the image acquisition loop.
-            if not success:
-                image_acquisition_period = cfg.gen_interval_default
+                # Acquire an image is the spacecraft is above an AOI during daytime.
+                if success and is_daytime and is_in_aoi:
+                    # Acquire the image.
+                    file_png = camera.acquire_image()
 
-            # If experiment's root directory is clean, i.e. no images left over from a previous image acquisition, then acquire a new image.
-            if success:
+                    # Check if image acquisition was OK.
+                    success = True if file_png is not None else False
+
+            else: # If the image acquisition type is polling (as opposed to AOI).
+
                 # Acquire the image.
                 file_png = camera.acquire_image()
 
                 # Check if image acquisition was OK.
                 success = True if file_png is not None else False
+
+            # Proceed if successfully acquired and image.
+            if success and file_png is not None:
             
-            # If we have successfully acquired a png file then create the  jpeg thumbnail if we want to downlink thumbnails.
-            if success and cfg.downlink_thumbnails:
-                # The thumbnail filename.
-                file_thumbnail = file_png.replace(".png", "_thumbnail.jpeg")
-                
-                # Create the thumbnail.
-                success = img_editor.create_thumbnail(file_png, file_thumbnail, cfg.jpeg_scaling, cfg.jpeg_quality, cfg.jpeg_processing)
+                # If we have successfully acquired a png file then create the  jpeg thumbnail if we want to downlink thumbnails.
+                if cfg.downlink_thumbnails:
+                    # The thumbnail filename.
+                    file_thumbnail = file_png.replace(".png", "_thumbnail.jpeg")
+                    
+                    # Create the thumbnail.
+                    success = img_editor.create_thumbnail(file_png, file_thumbnail, cfg.jpeg_scaling, cfg.jpeg_quality, cfg.jpeg_processing)
 
-            # Proceed if we have successfully create the thumbnail image.
-            if success:
+                # Proceed if we have successfully create the thumbnail image.
+                if success:
 
-                # Set the first image classification model to apply.
-                next_model = cfg.entry_point_model
+                    # Set the first image classification model to apply.
+                    next_model = cfg.entry_point_model
 
-                # Keep applying follow up models to the kept image as long as images are labeled to be kept and follow up models are defined.
-                while next_model is not None:
+                    # Keep applying follow up models to the kept image as long as images are labeled to be kept and follow up models are defined.
+                    while next_model is not None:
 
-                    # Assuming the image will not be kept until we get the final result from the last model in the pipeline.
-                    keep_image = False
+                        # Assuming the image will not be kept until we get the final result from the last model in the pipeline.
+                        keep_image = False
 
-                    # Init the model configuration properties for the current modell
-                    success = cfg.init_model_props(next_model)
+                        # Init the model configuration properties for the current modell
+                        success = cfg.init_model_props(next_model)
 
-                    # Check that the model section exists in the configuration file before proceeding.
-                    if not success:
-                        logger.error("Skipping the '{M}' model: it is not defined in the config.ini file.".format(M=next_model))
-                        break
-
-                    else:
-                        # Logging which model in the pipeline is being used to classify the image
-                        logger.info("Labeling the image using the '{M}' model.".format(M=next_model))
-
-                    # File name of the image file that will be used as the input image to feed the image classification model.
-                    file_image_input = file_png.replace(".png", "_input.jpeg")
-
-                    # Create the image that will be used as the input for the neural network image classification model.
-                    success = img_editor.create_input_image(\
-                        file_png, file_image_input,\
-                        cfg.input_height, cfg.input_width,\
-                        cfg.jpeg_scaling, cfg.jpeg_quality, cfg.jpeg_processing)
-
-                    # Input image for the model was successfully created, proceed with running the image classification program.
-                    if success:
-                        # Label the image.
-                        predictions_dict = img_classifier.label_image(\
-                            file_image_input, cfg.tflite_model, cfg.file_labels,\
-                            cfg.input_height, cfg.input_width, cfg.input_mean, cfg.input_std)
-
-                        # Break out of the loop if the image classification program returns an error.
-                        if predictions_dict is None:
-
-                            # Break out of the loop.
+                        # Check that the model section exists in the configuration file before proceeding.
+                        if not success:
+                            logger.error("Skipping the '{M}' model: it is not defined in the config.ini file.".format(M=next_model))
                             break
 
-                        # Fetch image classification result if the image classification program doesn't return an error code.
-                        elif predictions_dict:
+                        else:
+                            # Logging which model in the pipeline is being used to classify the image
+                            logger.info("Labeling the image using the '{M}' model.".format(M=next_model))
 
-                            # Get label with highest prediction confidence.
-                            applied_label = max(predictions_dict.items(), key=operator.itemgetter(1))[0]
-                            
-                            # Get the confidence value of the label with the higher confidence.
-                            applied_label_confidence = float(predictions_dict[applied_label])
+                        # File name of the image file that will be used as the input image to feed the image classification model.
+                        file_image_input = file_png.replace(".png", "_input.jpeg")
 
-                            # If the image classification is not greater or equal to a certain threshold then discard it.
-                            if applied_label_confidence < float(cfg.confidence_threshold):
-                                logger.info("Insufficient prediction confidence level to label the image (the threshold is currently set to " + cfg.confidence_threshold + ").")
+                        # Create the image that will be used as the input for the neural network image classification model.
+                        success = img_editor.create_input_image(\
+                            file_png, file_image_input,\
+                            cfg.input_height, cfg.input_width,\
+                            cfg.jpeg_scaling, cfg.jpeg_quality, cfg.jpeg_processing)
 
-                                # Break out of the loop if the prediction confidence is not high enough and we cannot proceed in labeling the image.
+                        # Input image for the model was successfully created, proceed with running the image classification program.
+                        if success:
+                            # Label the image.
+                            predictions_dict = img_classifier.label_image(\
+                                file_image_input, cfg.tflite_model, cfg.file_labels,\
+                                cfg.input_height, cfg.input_width, cfg.input_mean, cfg.input_std)
+
+                            # Break out of the loop if the image classification program returns an error.
+                            if predictions_dict is None:
+
+                                # Break out of the loop.
                                 break
-                            
-                            else:
-                                # Log highest confidence prediction.
-                                logger.info("Labeling the image as '" + applied_label + "'.")
 
-                                # Determine if we are keeping the image and if we are applying another classification model to it.
-                                # If next_model is not None then proceed to another iteration of this model pipeline loop.
-                                keep_image, next_model = utils.get_image_keep_status_and_next_model(applied_label, cfg.labels_keep)
+                            # Fetch image classification result if the image classification program doesn't return an error code.
+                            elif predictions_dict:
+
+                                # Get label with highest prediction confidence.
+                                applied_label = max(predictions_dict.items(), key=operator.itemgetter(1))[0]
+                                
+                                # Get the confidence value of the label with the higher confidence.
+                                applied_label_confidence = float(predictions_dict[applied_label])
+
+                                # If the image classification is not greater or equal to a certain threshold then discard it.
+                                if applied_label_confidence < float(cfg.confidence_threshold):
+                                    logger.info("Insufficient prediction confidence level to label the image (the threshold is currently set to " + cfg.confidence_threshold + ").")
+
+                                    # Break out of the loop if the prediction confidence is not high enough and we cannot proceed in labeling the image.
+                                    break
+                                
+                                else:
+                                    # Log highest confidence prediction.
+                                    logger.info("Labeling the image as '" + applied_label + "'.")
+
+                                    # Determine if we are keeping the image and if we are applying another classification model to it.
+                                    # If next_model is not None then proceed to another iteration of this model pipeline loop.
+                                    keep_image, next_model = utils.get_image_keep_status_and_next_model(applied_label, cfg.labels_keep)
 
 
-                # We have exited the model pipeline loop.
-                
-                # Collect image metadata. Even for images that will not be kept.
-                if predictions_dict is not None and cfg.collect_metadata:
-                    metadata = img_metadata.collect_metadata(file_png, applied_label, applied_label_confidence, keep_image)
+                    # We have exited the model pipeline loop.
                     
-                    # Write metadata to a CSV file.
-                    if metadata is not None:
-                        img_metadata.write_metadata(METADATA_CSV_FILE, metadata)
-
-                # Remove the image if it is not labeled for keeping.
-                if not keep_image:
-                    # Log image removal.
-                    logger.info("Ditching the image.")
-
-                    # The acquired image is not of interest: fall back the default image acquisition frequency.
-                    image_acquisition_period = cfg.gen_interval_default
-
-                    # Remove image.
-                    utils.cleanup()
-                
-                # Move the image to the experiment's toGround folder if we have gone through all the
-                # models in the pipeline and still have an image that is labeled to keep for downlinking.
-                else:
-
-                    # The current image has been classified with a label of interest.
-                    # Keep the image but only the types as per what is configured in the the config.ini file.
-                    logger.info("Keeping the image.")
-
-                    # Compress raw image if configured to do so.
-                    if raw_compressor is not None:
-
-                        # Log message to indicate compression.
-                        logger.info("Compressing the raw image.")
+                    # Collect image metadata. Even for images that will not be kept.
+                    if predictions_dict is not None and cfg.collect_metadata:
+                        metadata = img_metadata.collect_metadata(file_png, applied_label, applied_label_confidence, keep_image)
                         
-                        # Source and destination file paths for raw image file compression.
-                        file_raw_image = file_png.replace(".png", ".ims_rgb")
-                        file_raw_image_compressed = TOGROUND_PATH + "/" + applied_label + "/" + ntpath.basename(file_png).replace(".png", "." + cfg.raw_compression_type)
+                        # Write metadata to a CSV file.
+                        if metadata is not None:
+                            img_metadata.write_metadata(METADATA_CSV_FILE, metadata)
 
-                        # Create a label directory in the experiment's toGround directory.
-                        # This is where the compressed raw image file will be moved to and how we categorize images based on their predicted labels.
-                        toGround_label_dir = TOGROUND_PATH + '/' + applied_label
-                        if not os.path.exists(toGround_label_dir):
-                            os.makedirs(toGround_label_dir)
+                    # Remove the image if it is not labeled for keeping.
+                    if not keep_image:
+                        # Log image removal.
+                        logger.info("Ditching the image.")
 
-                        # Compress the raw image file.
-                        raw_compressor.compress(file_raw_image, file_raw_image_compressed)
+                        # The acquired image is not of interest: fall back the default image acquisition frequency.
+                        image_acquisition_period = cfg.gen_interval_default
 
-                    # Move the images for keeping.
-                    utils.move_images_for_keeping(cfg.raw_keep, cfg.png_keep, applied_label)
+                        # Remove image.
+                        utils.cleanup()
+                    
+                    # Move the image to the experiment's toGround folder if we have gone through all the
+                    # models in the pipeline and still have an image that is labeled to keep for downlinking.
+                    else:
 
-                    # An image of interest has been acquired: throttle image acquisition frequency.
-                    image_acquisition_period = cfg.gen_interval_throttle
+                        # The current image has been classified with a label of interest.
+                        # Keep the image but only the types as per what is configured in the the config.ini file.
+                        logger.info("Keeping the image.")
+
+                        # Compress raw image if configured to do so.
+                        if raw_compressor is not None:
+
+                            # Log message to indicate compression.
+                            logger.info("Compressing the raw image.")
+                            
+                            # Source and destination file paths for raw image file compression.
+                            file_raw_image = file_png.replace(".png", ".ims_rgb")
+                            file_raw_image_compressed = TOGROUND_PATH + "/" + applied_label + "/" + ntpath.basename(file_png).replace(".png", "." + cfg.raw_compression_type)
+
+                            # Create a label directory in the experiment's toGround directory.
+                            # This is where the compressed raw image file will be moved to and how we categorize images based on their predicted labels.
+                            toGround_label_dir = TOGROUND_PATH + '/' + applied_label
+                            if not os.path.exists(toGround_label_dir):
+                                os.makedirs(toGround_label_dir)
+
+                            # Compress the raw image file.
+                            raw_compressor.compress(file_raw_image, file_raw_image_compressed)
+
+                        # Move the images for keeping.
+                        utils.move_images_for_keeping(cfg.raw_keep, cfg.png_keep, applied_label)
+
+                        # An image of interest has been acquired: throttle image acquisition frequency.
+                        image_acquisition_period = cfg.gen_interval_throttle
 
         except:
             # In case of exception just log the stack trace and proceed to the next image acquisition iteration.
