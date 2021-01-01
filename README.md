@@ -53,6 +53,7 @@ This section describes the app's configuration parameters in the `config.ini` fi
 - *collect_metadata* - collect metadata into a CSV file (yes/no).
 - *tle_path* - path to the TLE file.
 - *quota_toGround* - experiment's toGround folder size limit (KB). Image acquisition is skipped if this limit is exceeded.
+- *max_error_count* - maximum number of errors thrown before exiting the image acquisition loop.
 
 ### 4.2. Image Acquisition
 There are two types of image acquisition that can beet set: Polling or Area-of-Interest (AOI):
