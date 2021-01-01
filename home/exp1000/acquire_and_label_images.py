@@ -1091,7 +1091,7 @@ def run_experiment():
             # Do this in case the period was throttled in the previous iteration of the image acquisition loop.
             image_acquisition_period = cfg.gen_interval_default
 
-            if cfg.max_error_count >= error_count:
+            if error_count >= cfg.max_error_count:
                 # Maximum error count reached. Exit image acquisition loop to terminate application.
                 logger.info("Exit image acquisition loop: reached meximum error count.")
                 break
