@@ -114,6 +114,9 @@ class AppConfig:
         # Size quota for the experiment's toGround folder.
         self.quota_toGround = self.config.getint('conf', 'quota_toGround')
 
+        # Maximum of errors before exiting program loop.
+        self.max_error_count = self.config.getint('conf', 'max_error_count')
+
 
     def init_model_props(self, model_name):
         """Fetch model configuration parameters."""
@@ -1066,11 +1069,34 @@ def run_experiment():
     done = False
     counter = 0
 
+    # Flag indicating whether or not we should skip the image acquisition and labeling process
+    # We want to skip in case some criteria is not met or in case we encounter an error.
+    success = True
+
+    # Error counter.
+    # Exit image acquisition loop when the maximum error count is reached.
+    # The maxiumum error count is set in the config.ini.
+    error_count = 0
+
     # Image acquisition loop.
     while not done:
 
-        # Flag indicating whether or not we should skip the image acquisition and labeling process
-        # We want to skip in case some criteria is not met or in case we encounter an error.
+        # If the previous image acquisition loop iteration was skipped due to an error.
+        
+        if not success:
+            # Increment error counter.
+            error_count = error_count + 1
+            
+            # Reset the image acquisition period to the default value.
+            # Do this in case the period was throttled in the previous iteration of the image acquisition loop.
+            image_acquisition_period = cfg.gen_interval_default
+
+            if cfg.max_error_count >= error_count:
+                # Maximum error count reached. Exit image acquisition loop to terminate application.
+                logger.info("Exit image acquisition loop: reached meximum error count.")
+                break
+       
+        # Start of a new image acquisition loop iteration. Assume success.
         success = True
 
         # Init keep image flag indicating if we kepp the image.
@@ -1135,11 +1161,6 @@ def run_experiment():
                     # Skip this image acquisition loop if an unexpected exception occurred.
                     logger.exception("Failed to acquire image based on geographic area of interest.")
                     success = False
-
-            # If we are skipping image acquisition then reset the image acquisition period to the default value.
-            # Do this in case the period was throttled in the previous iteration of the image acquisition loop.
-            if not success:
-                image_acquisition_period = cfg.gen_interval_default
 
             # If experiment's root directory is clean, i.e. no images left over from a previous image acquisition, then acquire a new image.
             if success:
