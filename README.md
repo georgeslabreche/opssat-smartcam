@@ -22,6 +22,7 @@ Ways to contribute:
 
 Join the [OPS-SAT community platform](https://opssat1.esoc.esa.int/) and apply to become an experimenter, it's quick and easy! 
 ## 3. How does it work?
+The app is designed to run on the Satellite Experimental Processing Platform (SEPP) payload onboard the OPS-SAT spacecraft. The SEPP is a powerful ALTERA Cyclone V with a 800 MHz CPU clock and 1GB DDR3 RAM. 
 ### 3.1. Overview
 The SmartCam's app configuration is set in the config.ini file. The gist of the application's logic is as follow:
 
@@ -34,7 +35,19 @@ The SmartCam's app configuration is set in the config.ini file. The gist of the 
 7. The labeled image is moved into the experiment and the filestore's toGround folders depending on the keep images and downlink configurations set in config.ini.
 8. Repeat steps 1 through 7 until the image acquisition loop as gone through the number of iterations set by *gen_number* in config.ini.
 
-### 3.2. Building an image classification pipeline
+### 3.2. Installation
+#### 3.2.1. Dependencies
+The SEPP runs the Ångström distribution of Linux. The following packages are dependencies that need to be installed in SEPP's Linux operating system prior to installing and running the SmartCam app:
+- **ephem 3.7.6.0:** Python package for high-precision astronomy computations. 
+- **Shapely 1.7.0:** Python package for manipulation and analysis of planar geometric objects. 
+- **libgeos 3.5.1:** Geometry engine for Geographic Information Systems - C++ Library.
+- **libgeos-c 1.9.1:** Geometry engine for Geographic Information Systems - C Library.
+
+These dependencies have been packaged into opkg ipk files, ready to be installed in the SEPP via the `opkg install` command. They can be found in the `deps` directory of this repository.
+#### 3.2.2. The App
+The SmartCam app has also been packaged for installation via opkg. The ipk files for tagged releases are available in the Tags section of this repository.
+
+### 3.3. Building an image classification pipeline
 1. Each model consists of a .tflite and a labels.txt file located in a model folder under `/home/exp1000/models`, e.g: `/home/exp1000/models/default` and `/home/exp1000/models/cloud_detection`.
 2. Create a config.ini section for each model. Prefix the section name with `model_`, e.g. `[model_default]` and `[model_cloud_detection]`.
 3. Each model's config section will specify which label to keep via the *labels_keep* property. For instance, if the default model can label an image as either "earth", "edge", or "bad", but we only want to keep images classified with the first two labels, then `labels_keep = ["earth", "edge"]`.
