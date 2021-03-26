@@ -21,7 +21,7 @@
 ## 2. Training a Model
 The model is trained with the `make_image_classifier` command. Usage instructions can be found [here](https://github.com/tensorflow/hub/tree/master/tensorflow_hub/tools/make_image_classifier)along with descriptions of the available parameters and hyperparameters. All example commands in this section assume a model named `my_model_name`.
 
-### 2.1. Prepare Directories
+### 2.1. Directories
 
 1. Create the directories used to train and validate the model: `./create_dirs.sh my_model_name`
 2. Put all pre-labeled images in the `repo/my_model_name/data/all` directory. 
