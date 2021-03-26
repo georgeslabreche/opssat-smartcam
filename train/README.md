@@ -5,7 +5,12 @@
 - The trained models can be used with the [SmartCam](https://github.com/georgeslabreche/opssat-smartcam) app.
 - Further details and examples on Transfer Learning with TensorFlow can be found [here](https://github.com/tensorflow/hub/tree/master/tensorflow_hub/tools/make_image_classifier) and [here](https://github.com/tensorflow/hub/blob/master/examples/colab/tf2_image_retraining.ipynb).
 
-## Installation
+
+1. [Installation](https://github.com/georgeslabreche/opssat-smartcam/train#1-installation)
+2. [Training a Model](https://github.com/georgeslabreche/opssat-smartcam/train#2-training-a-model)
+3. [Known Issues](https://github.com/georgeslabreche/opssat-smartcam/train#3-known-issues)
+
+## 1. Installation
 
 1. Create the virtual environment: `python3 -m venv venv`
 2. Source into the virtual environment: `source venv/bin/activate`
@@ -13,17 +18,17 @@
 4. Update setuptools: `pip3 install -U setuptools`
 5. Install tensorflow requirements: `pip3 install -r requirements.txt`
 
-## Training a model
+## 2. Training a Model
 The model is trained with the `make_image_classifier` command. Usage instructions can be found [here](https://github.com/tensorflow/hub/tree/master/tensorflow_hub/tools/make_image_classifier)along with descriptions of the available parameters and hyperparameters. All example commands in this section assume a model named `my_model_name`.
 
-### Prepare directories
+### 2.1. Prepare Directories
 
 1. Create the directories used to train and validate the model: `./create_dirs.sh my_model_name`
 2. Put all pre-labeled images in the `repo/my_model_name/data/all` directory. 
 3. Split all images in two groups: 75% training data and 25% validation data: `python3 split_data.py my_model_name 25`
 4. Check that the data has been split correctly by peaking into `repo/my_model_name/data/training` and `repo/my_model_name/data/validation`.
 
-### Train the model
+### 2.2. Training
 Run the `make_image_classifier` command on the training data set:
 
 ```bash
@@ -39,7 +44,7 @@ make_image_classifier \
 
 Keep an eye on the `accuracy` at the end of each epoch to figure out how many epochs are actually needed.
 
-### Validate the model
+### 2.3. Validation
 Use the trained model' to classify all images in `repo/my_model_name/data/validation` by running the following Python script:
 
 ```bash
@@ -56,8 +61,7 @@ Analyze the prediction accuracies for each label to validate the model with resp
 ```python
 python3 calc_perf.py my_model_name
 ```
-
-## Known issue
+## 3. Known Issues
 
 The following error may be thrown while running `make_image_classifier`:
 

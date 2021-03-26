@@ -5,11 +5,11 @@ The OPS-SAT SmartCam is an image acquisition and classification app for the Euro
 
 The app features geospatial awareness with the ability to acquire images when the spacecraft is located above pre-defined areas of interests that are described as polygons and/or multi-polygons in a GeoJSON file. 
 
-1. [Neural Networks](https://github.com/georgeslabreche/opssat-smartcam#neural-networks)
-2. [Contribute](https://github.com/georgeslabreche/opssat-smartcam#contribute)
-3. [How It Works](https://github.com/georgeslabreche/opssat-smartcam#how-does-it-work)
-4. [Configuration](https://github.com/georgeslabreche/opssat-smartcam#configuration)
-5. [Image Metadata](https://github.com/georgeslabreche/opssat-smartcam#image-metadata)
+1. [Neural Networks](https://github.com/georgeslabreche/opssat-smartcam#1-neural-networks)
+2. [Contribute](https://github.com/georgeslabreche/opssat-smartcam#2-contribute)
+3. [How It Works](https://github.com/georgeslabreche/opssat-smartcam#3-how-it-works)
+4. [Configuration](https://github.com/georgeslabreche/opssat-smartcam#4-configuration)
+5. [Image Metadata](https://github.com/georgeslabreche/opssat-smartcam#5-image-metadata)
 
 ## 1. Neural networks
 The app can use any .tflite neural network image classification model file trained with TensorFlow. 
