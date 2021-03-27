@@ -42,8 +42,6 @@ make_image_classifier \
   --summaries_dir repo/my_model_name/summaries
 ```
 
-Keep an eye on the `accuracy` at the end of each epoch to figure out how many epochs are actually needed.
-
 ### 2.3. Validation
 Use the trained model' to classify all images in `repo/my_model_name/data/validation` by running the following Python script:
 
@@ -61,6 +59,8 @@ Analyze the prediction accuracies for each label to validate the model with resp
 ```python
 python3 calc_perf.py my_model_name
 ```
+
+If predictions are not accurate enough then try training again using a higher epoch value.
 ## 3. Known Issues
 
 The following error may be thrown while running `make_image_classifier`:
