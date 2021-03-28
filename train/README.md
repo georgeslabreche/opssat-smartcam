@@ -64,7 +64,7 @@ If predictions are not accurate enough then try training again using a higher ep
 
 ### 2.4. Tools
 
-TensorFlow provides a bunch of [useful tools](https://github.com/tensorflow/tensorflow/tree/master/tensorflow/lite/tools) to evaluate the trained .tflite model: benchmark, inspect, visualize, and more.
+TensorFlow provides a bunch of [useful tools](https://github.com/tensorflow/tensorflow/tree/master/tensorflow/lite/tools) to evaluate the trained .tflite model: benchmark, inspect, visualize, and more. [Model optimization](https://www.tensorflow.org/lite/performance/model_optimization) is also possible.
 ## 3. Known Issues
 
 The following error may be thrown while running `make_image_classifier`:
