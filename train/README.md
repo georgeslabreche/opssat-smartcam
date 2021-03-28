@@ -61,6 +61,10 @@ python3 calc_perf.py my_model_name
 ```
 
 If predictions are not accurate enough then try training again using a higher epoch value.
+
+### 2.4. Tools
+
+TensorFlow provides a bunch of [useful tools](https://github.com/tensorflow/tensorflow/tree/master/tensorflow/lite/tools) to evaluate the trained .tflite model: benchmark, inspect, visualize, and more.
 ## 3. Known Issues
 
 The following error may be thrown while running `make_image_classifier`:
