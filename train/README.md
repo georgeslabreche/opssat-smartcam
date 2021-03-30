@@ -75,7 +75,7 @@ The following error may be thrown while running `make_image_classifier`:
  OSError: image file is truncated (49 bytes not processed) 
 ```
 
-This can be resolved by editing the `ImageFile.py` file, around the line number indicated by the error message, so that we have:
+This can be resolved by editing the `ImageFile.py` file, search for `LOAD_TRUNCATED_IMAGES` and edit it so that it is set to `True`:
 
 ```python
 LOAD_TRUNCATED_IMAGES = True

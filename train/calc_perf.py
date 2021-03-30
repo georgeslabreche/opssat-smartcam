@@ -66,9 +66,9 @@ total_predictions = 0
 
 print("\nACCURACY REPORT:\n")
 for key in results:
-    print('  ' + key + ': ' + str(results[key]['correct'] / results[key]['total']))
+    print('  ' + key + ': ' + str(float(results[key]['correct']) / float(results[key]['total'])))
     total_correct += results[key]['correct']
     total_predictions += results[key]['total']
 
 
-print("\n  average: " + str(total_correct / total_predictions) + "\n")
+print("\n  average: " + str(float(total_correct) / float(total_predictions)) + "\n")
