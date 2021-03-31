@@ -63,9 +63,10 @@ python3 batch_label_images.py my_model_name
 ```
 
 What the script does:
-1. Invokes the `label_image.py` script to classify each image. This script uses the trained model to predict a label for a given image.
-2. The classified images are copied to `repo/my_model_name/data/classification`.
-3. A classification confidence log is saved as a CSV file in `repo/my_model_name/data/classification/confidences.csv`.
+1. Invokes the `label_image.py` script to classify each image. This script uses the trained model to classify an image with a label.
+2. By default, a classification is accepted if the confidence level is greater than or equal to 70%.
+3. The classified images are copied to `repo/my_model_name/data/classification`.
+4. A classification confidence log is saved as a CSV file in `repo/my_model_name/data/classification/confidences.csv`.
 
 Analyze the classification accuracies for each label to test the model with respect to your performance criteria:
 
@@ -73,7 +74,7 @@ Analyze the classification accuracies for each label to test the model with resp
 python3 calc_perf.py my_model_name
 ```
 
-If classifications are not accurate enough then try training again using a higher epoch value. **Note that training with more epochs does not necessarily produce models with higher inference accuracies against your test data.** This is due to [overfitting](https://www.tensorflow.org/tutorials/keras/overfit_and_underfit): _"If you train for too long though, the model will start to overfit and learn patterns from the training data that don't generalize to the test data. We need to strike a balance."_
+If classifications are not accurate enough then try training again using a higher epoch value. **Training with more epochs does not necessarily produce models with higher inference accuracies against your test data.** This is due to [overfitting](https://www.tensorflow.org/tutorials/keras/overfit_and_underfit): _"If you train for too long though, the model will start to overfit and learn patterns from the training data that don't generalize to the test data. We need to strike a balance."_
 
 ### 2.4. Tools
 
