@@ -19,7 +19,7 @@
 5. Install tensorflow requirements: `pip3 install -r requirements.txt`
 
 ## 2. Training a Model
-The model is trained with the `make_image_classifier` command. Usage instructions can be found [here](https://github.com/tensorflow/hub/tree/master/tensorflow_hub/tools/make_image_classifier)along with descriptions of the available parameters and hyperparameters. All example commands in this section assume a model named `my_model_name`.
+The model is trained with the `make_image_classifier` command. Usage instructions can be found [here](https://github.com/tensorflow/hub/tree/master/tensorflow_hub/tools/make_image_classifier) along with descriptions of the available parameters and hyperparameters. All example commands in this section assume a model named `my_model_name`.
 
 ### 2.1. Directories
 
