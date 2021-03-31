@@ -18,25 +18,25 @@ DIR_CLASSIFIED_IMG = DIR_CLASSIFICATION + '/classified'
 DIR_UNCLASSIFIED_IMG = DIR_CLASSIFICATION + '/unclassified'
 CSV_FILENAME = DIR_CLASSIFICATION + '/confidences.csv'
 
-# Clear prediction logs from previous validation.
+# Clear prediction logs from previous test.
 if os.path.exists(CSV_FILENAME):
     os.remove(CSV_FILENAME) 
 
-# The path of the validation data directory.
-validation_data_dir_path = 'repo/' + model_name + '/data/validation'
+# The path of the Test data directory.
+test_data_dir_path = 'repo/' + model_name + '/data/test'
 
-# Go through all image files to split them as either Training or Validation data.
-for label_dir_name in os.listdir(validation_data_dir_path):
-    print("Validating against '" + label_dir_name + "' images...")
+# Go through all image files to split them as either Training or Test data.
+for label_dir_name in os.listdir(test_data_dir_path):
+    print("Testing against '" + label_dir_name + "' images...")
 
     # The label directory path.
-    label_dir_path = validation_data_dir_path + '/' + label_dir_name
+    label_dir_path = test_data_dir_path + '/' + label_dir_name
 
-    # Delete labels directory if already exists from previous validation.
+    # Delete classification directories if already exists from previous test.
     shutil.rmtree(DIR_CLASSIFIED_IMG + '/' + label_dir_name, ignore_errors=True)
     shutil.rmtree(DIR_UNCLASSIFIED_IMG + '/' + label_dir_name, ignore_errors=True) 
 
-    # Go through each Validation image in the current label directory and predict its label.
+    # Go through each Test image in the current label directory and predict its label.
     for image_file in progressbar.progressbar(os.listdir(label_dir_path), redirect_stdout=True):
         # The image file path.
         image_path = label_dir_path + '/' + image_file

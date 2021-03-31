@@ -8,17 +8,17 @@ if [ "$#" -ne 1 ]; then
 fi
 
 # Create directories.
-echo "Creating directories to train and validate the '$1' model..."
+echo "Creating directories to train and test the '$1' model..."
 mkdir -p repo/$1
 mkdir -p repo/$1/summaries
 mkdir -p repo/$1/data/all
 mkdir -p repo/$1/data/training
-mkdir -p repo/$1/data/validation
+mkdir -p repo/$1/data/test
 mkdir -p repo/$1/data/classification
 mkdir -p repo/$1/data/classification/classified
 mkdir -p repo/$1/data/classification/unclassified
 
 echo "Done."
-echo "Next step: move your training and validation images into the training_data and validation_data directories."
+echo "Next step: move your training and test images into the training and test directories."
 echo "Read the README for further instructions."
 

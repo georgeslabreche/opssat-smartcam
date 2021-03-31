@@ -13,7 +13,7 @@ if len(sys.argv) != 3:
 # The name of the model that is going to be trained.
 model_name = sys.argv[1]
 
-# The percentage of data to use as validation data.
+# The percentage of data to use as test data.
 split_percent = int(sys.argv[2])
 
 # The split modulo to determine the splitting.
@@ -22,10 +22,14 @@ split_modulo = math.ceil(100 / split_percent)
 # The data directory paths.
 all_data_dir_path = 'repo/' + model_name + '/data/all'
 training_data_dir_path = 'repo/' + model_name + '/data/training'
-validation_data_dir_path = 'repo/' + model_name + '/data/validation'
+test_data_dir_path = 'repo/' + model_name + '/data/test'
 
 # Use this counter to track number of images files.
 img_counter = 0
+
+if len(listdir(all_data_dir_path)) == 0:
+    print('No training directories found. Training data must be grouped into a directory for each target classification label.')
+    exit(0)
 
 # Go through all image files to split them as either Training or Validation data.
 for label_dir_name in listdir(all_data_dir_path):
@@ -39,8 +43,8 @@ for label_dir_name in listdir(all_data_dir_path):
         os.makedirs(training_data_dir_path + '/' + label_dir_name)
 
     # Create the label folder in the Validation directory, if it doesn't exist already.
-    if not os.path.exists(validation_data_dir_path + '/' + label_dir_name):
-        os.makedirs(validation_data_dir_path + '/' + label_dir_name)
+    if not os.path.exists(test_data_dir_path + '/' + label_dir_name):
+        os.makedirs(test_data_dir_path + '/' + label_dir_name)
 
     # Go through each image in the current label directory and copy it to either the Training or Validation directory.
     for image_file in listdir(label_dir_path):
@@ -51,7 +55,7 @@ for label_dir_name in listdir(all_data_dir_path):
         # Use module to split files between Training and Validation.
         if img_counter % split_modulo == 0:
             # This image is copied to the Validation directory.
-            shutil.copyfile(label_dir_path + '/' + image_file, validation_data_dir_path + '/' + label_dir_name + '/' + image_file)
+            shutil.copyfile(label_dir_path + '/' + image_file, test_data_dir_path + '/' + label_dir_name + '/' + image_file)
         else:
             # This image is copied to the Training directory.
             shutil.copyfile(label_dir_path + '/' + image_file, training_data_dir_path + '/' + label_dir_name + '/' + image_file)
