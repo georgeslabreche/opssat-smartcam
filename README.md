@@ -5,14 +5,19 @@ The OPS-SAT SmartCam is an image acquisition and classification app for the Euro
 
 The app features geospatial awareness with the ability to acquire images when the spacecraft is located above pre-defined areas of interests that are described as polygons and/or multi-polygons in a GeoJSON file. 
 
-1. [Neural Networks](https://github.com/georgeslabreche/opssat-smartcam#neural-networks)
-2. [Contribute](https://github.com/georgeslabreche/opssat-smartcam#contribute)
-3. [How does it work?](https://github.com/georgeslabreche/opssat-smartcam#how-does-it-work)
-4. [Configuration](https://github.com/georgeslabreche/opssat-smartcam#configuration)
-5. [Image Metadata](https://github.com/georgeslabreche/opssat-smartcam#image-metadata)
+1. [Neural Networks](https://github.com/georgeslabreche/opssat-smartcam#1-neural-networks)
+2. [Contribute](https://github.com/georgeslabreche/opssat-smartcam#2-contribute)
+3. [How It Works](https://github.com/georgeslabreche/opssat-smartcam#3-how-it-works)
+4. [Configuration](https://github.com/georgeslabreche/opssat-smartcam#4-configuration)
+5. [Image Metadata](https://github.com/georgeslabreche/opssat-smartcam#5-image-metadata)
 
-## 1. Neural Networks
-The app can apply any .tflite neural network image classification model file trained with TensorFlow. The default model's labels are "earth", "edge", and "bad". The SmartCam's image classification program [uses the TensorFlow Lite C API for model inference](https://github.com/georgeslabreche/tensorflow-opssat-smartcam). Tensorflow Lite inference is thus available to any experimenter without being restricted to image classification. 
+## 1. Neural networks
+The app can use any .tflite neural network image classification model file trained with TensorFlow. 
+## 1.1. Inference
+The default model's labels are "earth", "edge", and "bad". The SmartCam's image classification program [uses the TensorFlow Lite C API for model inference](https://github.com/georgeslabreche/tensorflow-opssat-smartcam). Tensorflow Lite inference is thus available to any experimenter without being restricted to image classification.
+
+### 1.2. Training New Models
+Scripts and instructions to train new models are available [here](https://github.com/georgeslabreche/opssat-smartcam/train).
 
 ## 2. Contribute
 Ways to contribute:
@@ -21,7 +26,7 @@ Ways to contribute:
 - OPS-SAT is your flying laboratory: come up with your own experiment that is unrelated to the SmartCam app or the AI framework that powers it.
 
 Join the [OPS-SAT community platform](https://opssat1.esoc.esa.int/) and apply to become an experimenter, it's quick and easy! 
-## 3. How does it work?
+## 3. How It Works
 The app is designed to run on the Satellite Experimental Processing Platform (SEPP) payload onboard the OPS-SAT spacecraft. The SEPP is a powerful ALTERA Cyclone V with a 800 MHz CPU clock and 1GB DDR3 RAM. 
 ### 3.1. Overview
 The SmartCam's app configuration is set in the config.ini file. The gist of the application's logic is as follow:
@@ -47,7 +52,7 @@ These dependencies have been packaged into opkg ipk files, ready to be installed
 #### 3.2.2. The App
 The SmartCam app has also been packaged for installation via opkg. The ipk files for tagged releases are available in the Tags section of this repository.
 
-### 3.3. Building an image classification pipeline
+### 3.3. Building an Image Classification Pipeline
 1. Each model consists of a .tflite and a labels.txt file located in a model folder under `/home/exp1000/models`, e.g: `/home/exp1000/models/default` and `/home/exp1000/models/cloud_detection`.
 2. Create a config.ini section for each model. Prefix the section name with `model_`, e.g. `[model_default]` and `[model_cloud_detection]`.
 3. Each model's config section will specify which label to keep via the *labels_keep* property. For instance, if the default model can label an image as either "earth", "edge", or "bad", but we only want to keep images classified with the first two labels, then `labels_keep = ["earth", "edge"]`.
@@ -73,7 +78,7 @@ There are two types of image acquisition that can beet set: Polling or Area-of-I
 - Polling: acquire images in a loop that begins at the experiment start time.
 - AOI: acquire images whenever the spacecraft is above an area of interest, during daytime, as defined by polygon shapes in a GeoJSON file.
 
-#### 4.2.1. AOI GeoJSON Files
+#### 4.2.1. Area-of-Interest GeoJSON Files
 - The default AOI GeoJSON files defines multipolygon representations of all continents except Antarctica. 
 - Use [geojson.io](https://geojson.io) to define custom AOI polygons for the app to consume.
 - Use [mapshaper](https://mapshaper.org/) to simplify GeoJSON files onbtained from third-party providers in order to keep the file sizes small.
