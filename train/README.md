@@ -55,7 +55,7 @@ tensorboard --logdir repo/my_model_name/summaries
 
 The scalars in TensorBoard for epoch accuracy and epoch loss are updated after each processed epoch.
 
-### 2.4. Testing
+### 2.3. Testing
 Use the trained model' to classify all images in `repo/my_model_name/data/test` by running the following Python script:
 
 ```bash
@@ -64,7 +64,7 @@ python3 batch_label_images.py my_model_name
 
 What the script does:
 1. Invokes the `label_image.py` script to classify each image. This script uses the trained model to classify an image with a label.
-2. By default, a classification is accepted if the confidence level is greater than or equal to 70%.
+2. By default, a classification is accepted if the confidence level is greater than or equal to 70%. This is configurable.
 3. The classified images are copied to `repo/my_model_name/data/classification`.
 4. A classification confidence log is saved as a CSV file in `repo/my_model_name/data/classification/confidences.csv`.
 
