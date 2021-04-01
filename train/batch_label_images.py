@@ -11,7 +11,7 @@ import progressbar
 if len(sys.argv) not in [2, 3]:
     print('Invalid arguments. Usage e.g.:')
     print('  python3 batch_label_images.py my_model_name')
-    print('  python3 batch_label_images.py my_model_name skip_label_1,skip_label_2')
+    print('  python3 batch_label_images.py my_model_name label_1,label_2')
 
 # The name of the model that is going to be trained.
 model_name = sys.argv[1]
