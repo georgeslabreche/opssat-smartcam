@@ -6,9 +6,9 @@
 - Further details and examples on Transfer Learning with TensorFlow can be found [here](https://github.com/tensorflow/hub/tree/master/tensorflow_hub/tools/make_image_classifier) and [here](https://github.com/tensorflow/hub/blob/master/examples/colab/tf2_image_retraining.ipynb).
 
 
-1. [Installation](https://github.com/georgeslabreche/opssat-smartcam/train#1-installation)
-2. [Training a Model](https://github.com/georgeslabreche/opssat-smartcam/train#2-training-a-model)
-3. [Known Issues](https://github.com/georgeslabreche/opssat-smartcam/train#3-known-issues)
+1. [Installation](https://github.com/georgeslabreche/opssat-smartcam/tree/main/train#1-installation)
+2. [Training a Model](https://github.com/georgeslabreche/opssat-smartcam/tree/main/train#2-training-a-model)
+3. [Known Issues](https://github.com/georgeslabreche/opssat-smartcam/tree/main/train#3-known-issues)
 
 ## 1. Installation
 
@@ -23,37 +23,31 @@ The model is trained with the `make_image_classifier` command. Usage instruction
 
 ### 2.1. Directories
 
-1. Create the directories used to train and validate the model: `./create_dirs.sh my_model_name`
+1. Create the directories used to train and test the model: `./create_dirs.sh my_model_name`
 2. Put all pre-labeled images in the `repo/my_model_name/data/all` directory. 
 3. Split all images in two groups: 75% training data and 25% test data: `python3 split_data.py my_model_name 25`
 4. Check that the data has been split correctly by peaking into `repo/my_model_name/data/training` and `repo/my_model_name/data/test`.
 
+Behind the scene, `make_image_classifier` will [split the training data into training and validation pieces](https://github.com/tensorflow/hub/blob/44e2e19387ed756bc7f1c6e128044f4e26a937db/tensorflow_hub/tools/make_image_classifier/make_image_classifier.py#L59). This is why we only prepare training and testing datasets and do not worry about creating a validation dataset.
+
+Helpful videos to understand the difference between training set vs test set vs validation set:
+- [Intuition: Training Set vs. Test Set vs. Validation Set](https://www.youtube.com/watch?v=swCf51Z8QDo)
+- [Train, Test, & Validation Sets explained](https://www.youtube.com/watch?v=Zi-0rlM4RDs)
+
 ### 2.2. Training
 
-Delete the summaries data that was created during a previous training:
-```
-rm -rf repo/my_model_name/summaries
-```
-
-Run the `make_image_classifier` command on the training data set:
+Run the `make_image_classifier` command on the training dataset, specify the number of epochs as the second argument:
 
 ```bash
-make_image_classifier \
-  --image_dir repo/my_model_name/data/training \
-  --tfhub_module https://tfhub.dev/google/tf2-preview/mobilenet_v2/feature_vector/4 \
-  --saved_model_dir repo/my_model_name \
-  --labels_output_file repo/my_model_name/labels.txt \
-  --tflite_output_file repo/my_model_name/tflite_model.tflite \
-  --train_epochs 5 \
-  --summaries_dir repo/my_model_name/summaries
+./train_model.sh my_model_name 100
 ```
 
-Monitor the model training on TensorBoard at `http://localhost:6006/`:
+Monitor the epoch training and validation loss curves on TensorBoard at `http://localhost:6006/`:
 ```
 tensorboard --logdir repo/my_model_name/summaries
 ```
 
-The scalars in TensorBoard for epoch accuracy and epoch loss are updated after each processed epoch.
+**Observe the validation loss curves to determine when to stop the training.** The epoch loss curves also helps determine whether or not underfitting or overfitting is occuring. [Understanding the training and validation loss curves](https://www.youtube.com/watch?v=p3CcfIjycBA) is very important to guide you into creating a robust model. 
 
 ### 2.3. Testing
 Use the trained model' to classify all images in `repo/my_model_name/data/test` by running the following Python script:
@@ -70,11 +64,14 @@ What the script does:
 
 Analyze the classification accuracies for each label to test the model with respect to your performance criteria:
 
-```python
+```bash
 python3 calc_perf.py my_model_name
 ```
 
-If classifications are not accurate enough then try training again using a higher epoch value. **Training with more epochs does not necessarily produce models with higher inference accuracies against your test data.** This is due to [overfitting](https://www.tensorflow.org/tutorials/keras/overfit_and_underfit): _"If you train for too long though, the model will start to overfit and learn patterns from the training data that don't generalize to the test data. We need to strike a balance."_
+If classifications are not accurate enough then try training again using a higher epoch value. **Training with more epochs does not necessarily produce models with higher inference accuracies against your test data.** The accuracy of a model peaks after training for a number of epochs, and then stagnates or starts decreasing. This is due to [overfitting](https://www.tensorflow.org/tutorials/keras/overfit_and_underfit):
+
+
+ _"If you train for too long though, the model will start to overfit and learn patterns from the training data that don't generalize to the test data. We need to strike a balance [...] To prevent overfitting, the best solution is to use more complete training data. The dataset should cover the full range of inputs that the model is expected to handle. Additional data may only be useful if it covers new and interesting cases."_
 
 ### 2.4. Tools
 

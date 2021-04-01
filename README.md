@@ -17,7 +17,7 @@ The app can use any .tflite neural network image classification model file train
 The default model's labels are "earth", "edge", and "bad". The SmartCam's image classification program [uses the TensorFlow Lite C API for model inference](https://github.com/georgeslabreche/tensorflow-opssat-smartcam). Tensorflow Lite inference is thus available to any experimenter without being restricted to image classification.
 
 ### 1.2. Training New Models
-Scripts and instructions to train new models are available [here](https://github.com/georgeslabreche/opssat-smartcam/train).
+Scripts and instructions to train new models are available [here](https://github.com/georgeslabreche/opssat-smartcam/tree/main/train).
 
 ## 2. Contribute
 Ways to contribute:

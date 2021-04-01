@@ -1,9 +1,8 @@
-
 #!/bin/bash
 
 # Check that expected number of parameters is given.
 if [ "$#" -ne 1 ]; then
-    echo "Illegal number of parameters. Usage e.g.: ./create_dirs.sh <model_name>"
+    echo "Invalid number of parameters. Usage e.g.: ./create_dirs.sh <model_name>"
     exit 1
 fi
 
