@@ -34,12 +34,12 @@ if len(os.listdir(all_data_dir_path)) == 0:
 # Delete all training data label directories that may have been created in a previous split.
 training_dirlist = [f for f in os.listdir(training_data_dir_path)]
 for d in training_dirlist:
-    shutil.rmtree(os.path.join(training_data_dir_path, d))
+    shutil.rmtree(os.path.join(training_data_dir_path, d), ignore_errors=True)
 
 # Delete all test data label directories that may have been created in a previous split.
 test_dirlist = [f for f in os.listdir(test_data_dir_path)]
 for d in test_dirlist:
-    shutil.rmtree(os.path.join(test_data_dir_path, d))
+    shutil.rmtree(os.path.join(test_data_dir_path, d), ignore_errors=True)
 
 # Go through all image files to split them as either Training or Validation data.
 for label_dir_name in os.listdir(all_data_dir_path):

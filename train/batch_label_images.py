@@ -16,8 +16,24 @@ if len(sys.argv) not in [2, 3]:
 # The name of the model that is going to be trained.
 model_name = sys.argv[1]
 
+# The model file.
+model_file = 'repo/{0}/tflite_model.tflite'.format(model_name)
+
+# The label file.
+label_file = 'repo/{0}/labels.txt'.format(model_name)
+
+# Check if model file exists.
+if not os.path.exists(model_file):
+    print("The model file doesn't exits: " + model_file)
+    exit(1)
+
+# Check if label file exists.
+if not os.path.exists(label_file):
+    print("The label file doesn't exits: " + label_file)
+    exit(1)
+
 # Skip testing for these labels.
-labels_skip_list = sys.argv[2].split(",")
+labels_skip_list = sys.argv[2].split(",") if len(sys.argv) == 3 else []
 
 # Directory and file paths.
 DIR_CLASSIFICATION = 'repo/' + model_name + '/data/classification'
@@ -55,8 +71,8 @@ for label_dir_name in os.listdir(test_data_dir_path):
 
             # Build the python command to executing the label_image.py prediction/inference script that feeds the image into the trained mode.
             # Default values are used for parameters that are not set, see label_image.py for what those parameters and default values are.
-            cmd_label_image = 'python3 label_image.py -n {0} -i {1} -m repo/{0}/tflite_model.tflite -l repo/{0}/labels.txt -e {2} > /dev/null 2>&1'\
-                .format(model_name, image_path, label_dir_name)
+            cmd_label_image = 'python3 label_image.py -n {0} -i {1} -m {2} -l {3} -e {4} > /dev/null 2>&1'\
+                .format(model_name, image_path, model_file, label_file, label_dir_name)
 
             # Predict!
             os.system(cmd_label_image)
