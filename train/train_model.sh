@@ -20,4 +20,5 @@ make_image_classifier \
   --labels_output_file repo/$1/labels.txt \
   --tflite_output_file repo/$1/tflite_model.tflite \
   --train_epochs $2 \
+  --do_fine_tuning \
   --summaries_dir repo/$1/summaries
