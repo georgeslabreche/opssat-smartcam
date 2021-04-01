@@ -2,7 +2,6 @@
 
 import sys
 import os
-from os import listdir
 import shutil
 import math
 
@@ -27,12 +26,23 @@ test_data_dir_path = 'repo/' + model_name + '/data/test'
 # Use this counter to track number of images files.
 img_counter = 0
 
-if len(listdir(all_data_dir_path)) == 0:
+if len(os.listdir(all_data_dir_path)) == 0:
     print('No training directories found. Training data must be grouped into a directory for each target classification label.')
     exit(0)
 
+
+# Delete all training data label directories that may have been created in a previous split.
+training_dirlist = [f for f in os.listdir(training_data_dir_path)]
+for d in training_dirlist:
+    shutil.rmtree(os.path.join(training_data_dir_path, d))
+
+# Delete all test data label directories that may have been created in a previous split.
+test_dirlist = [f for f in os.listdir(test_data_dir_path)]
+for d in test_dirlist:
+    shutil.rmtree(os.path.join(test_data_dir_path, d))
+
 # Go through all image files to split them as either Training or Validation data.
-for label_dir_name in listdir(all_data_dir_path):
+for label_dir_name in os.listdir(all_data_dir_path):
     print("Splitting '" + label_dir_name + "' images into Training or Validation datasets...")
 
     # The label directory path.
@@ -47,7 +57,7 @@ for label_dir_name in listdir(all_data_dir_path):
         os.makedirs(test_data_dir_path + '/' + label_dir_name)
 
     # Go through each image in the current label directory and copy it to either the Training or Validation directory.
-    for image_file in listdir(label_dir_path):
+    for image_file in os.listdir(label_dir_path):
 
         # Use this counter to track the split.
         img_counter = img_counter + 1
