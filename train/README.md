@@ -6,6 +6,9 @@
 - Further details and examples on Transfer Learning with TensorFlow can be found [here](https://github.com/tensorflow/hub/tree/master/tensorflow_hub/tools/make_image_classifier) and [here](https://github.com/tensorflow/hub/blob/master/examples/colab/tf2_image_retraining.ipynb).
 
 
+**This is only a guideline on how to get started. Obtaining robust models requires cutomized training, in-depth training analysis, and model optimization techniques that are not covered in these instructions.**
+
+
 1. [Installation](https://github.com/georgeslabreche/opssat-smartcam/tree/main/train#1-installation)
 2. [Training a Model](https://github.com/georgeslabreche/opssat-smartcam/tree/main/train#2-training-a-model)
 3. [Known Issues](https://github.com/georgeslabreche/opssat-smartcam/tree/main/train#3-known-issues)
