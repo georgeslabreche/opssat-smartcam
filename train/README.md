@@ -1,6 +1,6 @@
 ## Introduction
 
-**This is only a guideline on how to get started with training models for the SmartCam app on-board the OPS-SAT Spacecraft. Obtaining robust models requires customized training, in-depth training analysis, and model optimization techniques that are not covered in these instructions.**
+**This is only a guideline on how to get started with training models for the SmartCam app on-board the OPS-SAT Spacecraft. Obtaining robust models requires customized training, in-depth training analysis, fine-tuning, and model optimization techniques that are not covered in these instructions.**
 
 ### Summary
 - Use Transfer Learning to train models that classify OPS-SAT thumbnail images.
