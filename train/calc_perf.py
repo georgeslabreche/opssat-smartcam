@@ -6,6 +6,7 @@ import csv
 # Check that a valid number of arguments is given.
 if len(sys.argv) != 2:
     print('Invalid arguments. Usage e.g.: python3 calc_perf.py <model_name>')
+    exit(1)
 
 # The name of the model that is going to be trained.
 model_name = sys.argv[1]

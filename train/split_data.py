@@ -8,6 +8,7 @@ import math
 # Check that a valid number of arguments is given.
 if len(sys.argv) != 3:
     print('Invalid arguments. Usage e.g.: python3 split_data.py <model_name> 25')
+    exit(1)
 
 # The name of the model that is going to be trained.
 model_name = sys.argv[1]
