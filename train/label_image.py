@@ -142,6 +142,10 @@ if __name__ == '__main__':
 
   csv_row['expected_label'] = args.expected_label
   
+  # Use these variables to retain which label has the highest prediction confidence.
+  predicted_label = None
+  highest_confidence = 0
+
   # Loop through the labels and classify images based on confidence threshold.
   for i in top_k:
 
@@ -159,19 +163,24 @@ if __name__ == '__main__':
     
     # Write confidence result in CSV report.
     csv_row[labels[i]] = result
-    
-    # Check if result is of high enough confidence to classify the image.
-    if result >= args.threshold:
-    
-        # Mark image as classified.
-        classified = True
 
-        # Copy image to classified directory (if above a confidence threshold).
-        dst_filename = DIR_CLASSIFIED_IMG + '/' + labels[i] + '/' + ntpath.basename(args.image)
-        shutil.copyfile(args.image, dst_filename)
+    # Retain which label has the highest prediction confidence.
+    if result > highest_confidence:
+      highest_confidence = result
+      predicted_label = labels[i]
 
-        # In CSV report indicate which classification was applied.
-        csv_row['predicted_label'] = labels[i]
+  # Check if result is of high enough confidence to classify the image.
+  if highest_confidence >= args.threshold:
+  
+      # Mark image as classified.
+      classified = True
+
+      # Copy image to classified directory (if above a confidence threshold).
+      dst_filename = DIR_CLASSIFIED_IMG + '/' + predicted_label + '/' + ntpath.basename(args.image)
+      shutil.copyfile(args.image, dst_filename)
+
+      # In CSV report indicate which classification was applied.
+      csv_row['predicted_label'] = predicted_label
    
   # If image was not classified in either of the labels then copy it into an unclassified directory.
   if not classified:
