@@ -28,7 +28,7 @@ The model is trained with the `make_image_classifier` command. Usage instruction
 
 1. Create the directories used to train and test the model: `./create_dirs.sh my_model_name`
 2. Put all pre-labeled images in the `repo/my_model_name/data/all` directory. 
-3. Split all images in two groups: 75% training data and 25% test data: `python3 split_data.py my_model_name 25`
+3. Split all images in two groups, e.g. 75% training data and 25% test data: `python3 split_data.py my_model_name 25`
 4. Check that the data has been split correctly by peaking into `repo/my_model_name/data/training` and `repo/my_model_name/data/test`.
 5. Delete corrupt image files (in case they exist): `python3 rm_corrupt_images.py my_model_name`
 
