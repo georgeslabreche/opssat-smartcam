@@ -42,13 +42,12 @@ def load_labels(filename):
   with open(filename, 'r') as f:
     return [line.strip() for line in f.readlines()]
 
- 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser()
   parser.add_argument(
       '-t',
       '--threshold',
-      default=0.70, type=float,
+      default=0, type=float,
       help='confidence threshold for a valid prediction')
   parser.add_argument(
       '-n',
