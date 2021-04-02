@@ -30,6 +30,7 @@ The model is trained with the `make_image_classifier` command. Usage instruction
 2. Put all pre-labeled images in the `repo/my_model_name/data/all` directory. 
 3. Split all images in two groups: 75% training data and 25% test data: `python3 split_data.py my_model_name 25`
 4. Check that the data has been split correctly by peaking into `repo/my_model_name/data/training` and `repo/my_model_name/data/test`.
+5. Delete corrupt image files (in case they exist): `python3 rm_corrupt_images.py my_model_name`
 
 Behind the scene, `make_image_classifier` will [split the training data into training and validation pieces](https://github.com/tensorflow/hub/blob/44e2e19387ed756bc7f1c6e128044f4e26a937db/tensorflow_hub/tools/make_image_classifier/make_image_classifier.py#L59). This is why we only prepare training and testing datasets and do not worry about creating a validation dataset.
 
