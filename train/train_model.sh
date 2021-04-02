@@ -12,7 +12,7 @@ then
     rm -rf repo/$1/summaries
 fi
 
-# Train a model.
+# Train a model. Use Transfer Learning with feature vectors of images with MobileNet V2 trained on ImageNet (ILSVRC-2012-CLS).
 make_image_classifier \
   --image_dir repo/$1/data/training \
   --tfhub_module https://tfhub.dev/google/tf2-preview/mobilenet_v2/feature_vector/4 \
