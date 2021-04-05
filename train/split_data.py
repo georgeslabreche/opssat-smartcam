@@ -42,9 +42,9 @@ test_dirlist = [f for f in os.listdir(test_data_dir_path)]
 for d in test_dirlist:
     shutil.rmtree(os.path.join(test_data_dir_path, d), ignore_errors=True)
 
-# Go through all image files to split them as either Training or Validation data.
+# Go through all image files to split them as either Training or Test data.
 for label_dir_name in os.listdir(all_data_dir_path):
-    print("Splitting '" + label_dir_name + "' images into Training or Validation datasets...")
+    print("Splitting '" + label_dir_name + "' images into Training or Test datasets...")
 
     # The label directory path.
     label_dir_path = all_data_dir_path + "/" + label_dir_name
@@ -53,19 +53,19 @@ for label_dir_name in os.listdir(all_data_dir_path):
     if not os.path.exists(training_data_dir_path + '/' + label_dir_name):
         os.makedirs(training_data_dir_path + '/' + label_dir_name)
 
-    # Create the label folder in the Validation directory, if it doesn't exist already.
+    # Create the label folder in the Test directory, if it doesn't exist already.
     if not os.path.exists(test_data_dir_path + '/' + label_dir_name):
         os.makedirs(test_data_dir_path + '/' + label_dir_name)
 
-    # Go through each image in the current label directory and copy it to either the Training or Validation directory.
+    # Go through each image in the current label directory and copy it to either the Training or Test directory.
     for image_file in os.listdir(label_dir_path):
 
         # Use this counter to track the split.
         img_counter = img_counter + 1
         
-        # Use module to split files between Training and Validation.
+        # Use module to split files between Training and Test.
         if img_counter % split_modulo == 0:
-            # This image is copied to the Validation directory.
+            # This image is copied to the Test directory.
             shutil.copyfile(label_dir_path + '/' + image_file, test_data_dir_path + '/' + label_dir_name + '/' + image_file)
         else:
             # This image is copied to the Training directory.
