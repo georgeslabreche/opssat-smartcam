@@ -1,3 +1,9 @@
+# Reproduced from: 
+#   Szajnfarber, Z., Vrolijk, A., & Crusan, J. (2014). 
+#   Exploring the interaction between open innovation methods and system complexity. 
+#   In 4th international engineering systems symposium, Hoboken, New Jersey.
+#   https://doi.org/10.1002/sys.21419
+
 library(here)
 library(RColorBrewer)
 
