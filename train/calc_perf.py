@@ -65,13 +65,15 @@ with open(CSV_FILENAME, mode='r') as csv_file:
 total_correct = 0
 total_predictions = 0
 
-print("\nACCURACY REPORT:\n")
+print("\nPERFORMANCE REPORT:\n")
 for key in results:
-    print(key + ':\n  ' + str(float(results[key]['correct']) / float(results[key]['total'])))
-    print('  ' + str(results[key]['correct']) + '/' + str(results[key]['total']) + '\n')
+    # Sensitivity, also called Recall, is the true positive rate of the considered class.
+    print(key + ': ' +  str(results[key]['correct']) + '/' + str(results[key]['total']))
+    print('sensitivity: ' + str(float(results[key]['correct']) / float(results[key]['total'])) + '\n')
+
+    # Count total correct predictions.
     total_correct += results[key]['correct']
     total_predictions += results[key]['total']
 
-
-print('average:\n  ' + str(float(total_correct) / float(total_predictions)))
-print('  ' + str(total_correct) + '/' + str(total_predictions) + '\n')
+print('total: ' + str(total_correct) + '/' + str(total_predictions))
+print('total accuracy: ' + str(float(total_correct) / float(total_predictions)) + '\n')
