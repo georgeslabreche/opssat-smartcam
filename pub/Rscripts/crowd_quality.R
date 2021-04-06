@@ -1,7 +1,6 @@
-# Reproduced from: 
-#   Szajnfarber, Z., Vrolijk, A., & Crusan, J. (2014). 
-#   Exploring the interaction between open innovation methods and system complexity. 
-#   In 4th international engineering systems symposium, Hoboken, New Jersey.
+# Reproduces the plot in Figure 1.A of from Szajnfarber, Z., & Vrolijk, A. (2018). 
+#   A facilitated expert‐based approach to architecting "openable" complex systems
+#   Systems Engineering, 21(1), 47-58.
 #   https://doi.org/10.1002/sys.21419
 
 library(here)

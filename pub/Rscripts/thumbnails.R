@@ -1,3 +1,5 @@
+# Simple figures featuring different classes of thumbnails.
+
 library(imager)
 library(here)
 library(container)
