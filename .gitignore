@@ -5,3 +5,4 @@
 *.jpg
 !docs/*.png
 !docs/*.jpg
+!pub/RScripts/plots/*.png
