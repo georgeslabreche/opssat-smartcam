@@ -5,4 +5,4 @@
 *.jpg
 !docs/*.png
 !docs/*.jpg
-!pub/RScripts/plots/*.png
+!pub/Rscripts/plots/*.png
