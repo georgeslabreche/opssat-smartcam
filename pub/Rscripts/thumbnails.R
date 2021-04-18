@@ -5,7 +5,7 @@ library(here)
 library(container)
 
 # Flag to indicate if plots should be displayed or written to file.
-WRITE_PNG = TRUE
+WRITE_PNG = FALSE
 
 # DPI, or dots per inch.
 # A measure of the resolution of a printed document or digital scan.
