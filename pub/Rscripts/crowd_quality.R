@@ -7,7 +7,7 @@ library(here)
 library(RColorBrewer)
 
 # Flag indicating whether or not to write plot to file or just display it in a new window.
-WRITE_PNG = TRUE
+WRITE_PNG = FALSE
 
 # DPI, or dots per inch.
 # A measure of the resolution of a printed document or digital scan.
