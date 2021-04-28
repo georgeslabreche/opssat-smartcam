@@ -105,12 +105,12 @@ axis(side=1, at=c(0, 0.2, 0.4, 0.48,0.6, 0.8, 1.0))
 lines(tresholds, discarded_correct_earth_counts, col=pal[1], lwd=3)
 lines(tresholds, discarded_correct_edge_counts, col=pal[3], lwd=3)
 
-lines(tresholds, discarded_incorrect_bad_counts, col=pal[2], lty=3, lwd=3)
-lines(tresholds, discarded_incorrect_earth_counts, col=pal[1], lty=3, lwd=3)
-lines(tresholds, discarded_incorrect_edge_counts, col=pal[3], lty=3, lwd=3)
+lines(tresholds, discarded_incorrect_bad_counts, col=pal[2], lty=4, lwd=3)
+lines(tresholds, discarded_incorrect_earth_counts, col=pal[1], lty=4, lwd=3)
+lines(tresholds, discarded_incorrect_edge_counts, col=pal[3], lty=4, lwd=3)
 
 # Ideal confidence threshold line for given test set.
-abline(v=0.48, lty=2, lwd=2, col='azure4')
+abline(v=0.48, lty=3, lwd=2, col='azure4')
 
 # Legend box.
 rect(-0.03, 55, 0.17, 1000, col='white')
@@ -129,7 +129,7 @@ legend(-0.027, 550, inset=0.01, lwd=2, title='Correctly',
 legend(0.07, 550, inset=0.01, lwd=2, title='Incorrectly',
        legend=c('Bad', 'Earth', 'Edge'),
        col=c(pal[2], pal[1], pal[3]),
-       lty=3, cex=1, box.lty=0, seg.len=2)
+       lty=4, cex=1, box.lty=0, seg.len=2)
 
 # Device off.
 if(WRITE_PNG == TRUE){
