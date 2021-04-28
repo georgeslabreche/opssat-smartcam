@@ -1,17 +1,25 @@
 ![OPS-SAT SmartCam Logo](https://raw.githubusercontent.com/georgeslabreche/opssat-smartcam/main/docs/ops-sat_smartcam_logo_transparentbg.png?raw=true)
 
 # Background
-The OPS-SAT SmartCam is an image acquisition and classification app for the European Space Agency's [OPS-SAT](https://www.esa.int/Enabling_Support/Operations/OPS-SAT_your_flying_laboratory) spacecraft. An acquired image can go through a pipeline of multiple image classification models that are applied in a sequence.
+The SmartCam software on the [OPS-SAT](https://www.esa.int/Enabling_Support/Operations/OPS-SAT_your_flying_laboratory) spacecraft is the first use of Artificial Intelligence (AI) by the European Space Agency (ESA) for autonomous planning and scheduling on-board a flying mission. The software's geospatial capability autonomously triggers image acquisitions when the spacecraft is above areas of interest. Inferences from on-board Machine Learning (ML) models classify the captured pictures for downlink prioritization. This is made possible by the spacecraft's powerful processors, capable of running open-source software originally developed for terrestrial systems. Notably, with the [GEOS Geometry Engine](https://trac.osgeo.org/geos/) for geospatial computations and the [TensorFlow Lite](https://www.tensorflow.org/lite) framework for ML model inferences. These features provide new perspectives on how space operations can be designed for future missions given greater in-orbit compute capabilities.
 
-The app features geospatial awareness with the ability to acquire images when the spacecraft is located above pre-defined areas of interests that are described as polygons and/or multi-polygons in a GeoJSON file. 
-### Table of Contents
+The SmartCam's image classification pipeline is made "openable" by allowing it to be constructed from crowdsourced trained ML models. These third-party models can be uplinked to the spacecraft and chained into a sequence with configurable branching rules for hyper-specialized classification and subclassification through an autonomous decision-making tree. This mechanism enables open innovation methods to extend on-board ML beyond its original mission requirement while stimulating knowledge transfer from established AI communities into space applications. The use of an industry standard ML framework de-risks and accelerate developing AI for future missions by broadening OPS-SAT's accessibility to AI experimenters established outside of the space sector.
+
+# Citation
+We appreciate citations if you reference this work in a scientific publication. Thank you!
+
+## APA
+Labrèche, G., Evans, D., Marszk, D., Mladenov, T., Shiradhonkar, V., Zelenevskiy, V. (2021). Crowdsourcing Machine Learning Models for Autonomous In-Flight Operations with TensorFlow Lite On-Board the OPS-SAT Spacecraft. In _The 16th International Conference on Space Operations, SpaceOps_. AIAA.
+
+# Instructions
+**Table of Contents:**
 1. [Neural Networks](https://github.com/georgeslabreche/opssat-smartcam#1-neural-networks)
 2. [Contribute](https://github.com/georgeslabreche/opssat-smartcam#2-contribute)
 3. [How It Works](https://github.com/georgeslabreche/opssat-smartcam#3-how-it-works)
 4. [Configuration](https://github.com/georgeslabreche/opssat-smartcam#4-configuration)
 5. [Image Metadata](https://github.com/georgeslabreche/opssat-smartcam#5-image-metadata)
 
-## 1. Neural networks
+## 1. Neural Networks
 The app can use any .tflite neural network image classification model file trained with TensorFlow. 
 ## 1.1. Inference
 The default model's labels are "earth", "edge", and "bad". The SmartCam's image classification program [uses the TensorFlow Lite C API for model inference](https://github.com/georgeslabreche/tensorflow-opssat-smartcam). Tensorflow Lite inference is thus available to any experimenter without being restricted to image classification.
