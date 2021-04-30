@@ -120,6 +120,11 @@ There are two types of image acquisition that can beet set: Polling or Area-of-I
 - *input_std* - standard deviation of the image input.
 - *confidence_threshold* - minimum confidence level required to apply the label predicted by the neural network model.
 
+#### 4.4.1. Data Normalization
+A note on what *input_mean* and *input_std* are for, taken verbatim from [this blogpost](https://medium.com/@joel_34096/k-means-clustering-for-image-classification-a648f28bdc47):
+
+> Since the dataset contains a range of values from 0 to 255, the dataset has to be normalized. Data Normalization is an important preprocessing step which ensures that each input parameter (pixel, in this case) has a similar data distribution. This fastens the process of covergence while training the model. Also Normalization makes sure no one particular parameter influences the output significantly. Data normalization is done by subtracting the mean from each pixel and then dividing the result by the standard deviation. The distribution of such data would resemble a Gaussian curve centered at zero. For image inputs we need the pixel numbers to be positive. So the image input is divided by 255 so that input values are in range of [0,1].
+
 ### 4.5. Raw Image Compression
 #### 4.5.1. FAPEC
 The FAPEC compression binary provided by [DAPCOM DataServices](dapcom.es) and not included in this repository. The compressor can only be used with a valid license (free of charge if exclusively used for OPS-SAT purposes). Free decompression licenses (with some limitations) can be obtained from the DAPCOM website or upon request to [fapec@dapcom.es](fapec@dapcom.es).
