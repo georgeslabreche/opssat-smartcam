@@ -40,7 +40,7 @@ IMAGE_CLASSIFIER_BIN_PATH = BASE_PATH + '/bin/tensorflow/lite/c/image_classifier
 FAPEC_BIN_PATH = '/home/exp100/fapec'
 
 # The K-Means image clustering binary file path.
-KMEANS_BIN_PATH = BASE_PATH + '/bin/kmeans/K_Means
+KMEANS_BIN_PATH = BASE_PATH + '/bin/kmeans/K_Means'
 
 # The K-Means training data folder path.
 KMEANS_TRAINING_DATA_DIR_PATH = BASE_PATH + '/kmeans/training_data'
