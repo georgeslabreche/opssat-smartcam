@@ -1011,7 +1011,8 @@ class ImageClassifier:
                     # The centroids CSV file can be used to cluster the thumbnail images.
 
                     # The command string to cluster the images using K-Means.
-                    cmd = "./K_Means {M} {IMG_DIR} {CLUSTER_DIR} {C}".format(
+                    cmd = "{BIN} {M} {IMG_DIR} {CLUSTER_DIR} {C}".format(
+                        BIN=KMEANS_BIN_PATH,
                         M=4,
                         IMG_DIR=toGround_label_dir,
                         CLUSTER_DIR=toGround_label_dir,
@@ -1054,8 +1055,7 @@ class ImageClassifier:
                     if os.path.exists(training_data_file):
 
                         # Count the number of training inputs collected thus far in the training data CSV file.
-                        training_data_size = 0
-                        for line in open(training_data_file).xreadlines(): training_data_size += 1
+                        training_data_size = sum(1 for line in open(training_data_file))
 
                         # Not enough training data has been collected yet. Keep collecting training data.
                         # Invoke the appropriate K-Means executable binary command and make sure this Python app waits for the program to be completed before
@@ -1064,7 +1064,8 @@ class ImageClassifier:
                         if training_data_size < training_data_size_threshold:
                             
                             # The command string to collect training data.
-                            cmd = './K_Means {M} {IMG_DIR} {T}'.format(
+                            cmd = '{BIN} {M} {IMG_DIR} {T}'.format(
+                                BIN=KMEANS_BIN_PATH,
                                 M=1,
                                 IMG_DIR=toGround_label_dir,
                                 T=training_data_file)
@@ -1097,7 +1098,8 @@ class ImageClassifier:
                             # so we want to wait until the next run of the SmartCam app to check if the centroids file was successfully created or not.
                             
                             # The training command string.
-                            cmd = './K_Means {M} {K} {T} {C}'.format(
+                            cmd = '{BIN} {M} {K} {T} {C}'.format(
+                                BIN=KMEANS_BIN_PATH,
                                 M=2, K=k,
                                 T=training_data_file, 
                                 C=centroids_file_path)
@@ -1116,7 +1118,8 @@ class ImageClassifier:
                         # Start collecting training data now.
 
                         # The command string to collect training data.
-                        cmd = './K_Means {M} {IMG_DIR} {T}'.format(
+                        cmd = '{BIN} {M} {IMG_DIR} {T}'.format(
+                            BIN=KMEANS_BIN_PATH,
                             M=1,
                             IMG_DIR=toGround_label_dir,
                             T=training_data_file)
