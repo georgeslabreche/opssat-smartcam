@@ -728,16 +728,16 @@ class Utils:
                 if do_logging:
                     logger.info("Tarring {T} file(s) for downlink.".format(T=image_count))
 
-                # The paths of the image files to tar depends on whether or not we are clustering
-                img_files_to_tar = '{G}/**/*.{FILE_EXT} {G}/**/**/*.{FILE_EXT}' if do_clustering else '{G}/**/*.{FILE_EXT}'
+                # The paths of the image files to tar depends on whether or not we are clustering.
+                img_files_to_tar = '{G}/**/*.{FILE_EXT}'.format(G=TOGROUND_PATH, FILE_EXT=file_ext)
+
+                # Include cluster subfolders.
+                if do_clustering:
+                    img_files_to_tar = img_files_to_tar + ' {G}/**/**/*.{FILE_EXT}'.format(G=TOGROUND_PATH, FILE_EXT=file_ext)
 
                 # Use tar to package image and log files into the filestore's toGround folder.
-                os.system('tar {TAR_O} {TAR_PATH} ' + img_files_to_tar + ' {L}/*.log {L}/*.csv --remove-files'.format(\
-                    TAR_O=tar_options,\
-                    TAR_PATH=tar_path,\
-                    G=TOGROUND_PATH,\
-                    FILE_EXT=file_ext,\
-                    L=LOG_PATH))
+                tar_cmd = 'tar {TAR_O} {TAR_PATH} '.format(TAR_O=tar_options, TAR_PATH=tar_path) + img_files_to_tar + ' {L}/*.log {L}/*.csv --remove-files'.format(L=LOG_PATH)
+                os.system(tar_cmd)
 
                 # Return experiment toGround path to tar file.
                 return tar_path
