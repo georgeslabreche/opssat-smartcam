@@ -694,7 +694,7 @@ class Utils:
         os.system(cmd_move_images)
 
 
-    def package_files_for_downlinking(self, file_ext, downlink_log_if_no_images, experiment_start_time, files_from_previous_runs, do_logging):
+    def package_files_for_downlinking(self, file_ext, downlink_log_if_no_images, do_clustering, experiment_start_time, files_from_previous_runs, do_logging):
         """Package the files for downlinking.
         
         Logging is optional via the do_logging flag in case we start the experiment by tarring files leftover from a previous run that was abruptly interrupted.
@@ -728,8 +728,11 @@ class Utils:
                 if do_logging:
                     logger.info("Tarring {T} file(s) for downlink.".format(T=image_count))
 
+                # The paths of the image files to tar depends on whether or not we are clustering
+                img_files_to_tar = '{G}/**/*.{FILE_EXT} {G}/**/**/*.{FILE_EXT}' if do_clustering else '{G}/**/*.{FILE_EXT}'
+
                 # Use tar to package image and log files into the filestore's toGround folder.
-                os.system('tar {TAR_O} {TAR_PATH} {G}/**/*.{FILE_EXT} {G}/**/**/*.{FILE_EXT} {L}/*.log {L}/*.csv --remove-files'.format(\
+                os.system('tar {TAR_O} {TAR_PATH} ' + img_files_to_tar + ' {L}/*.log {L}/*.csv --remove-files'.format(\
                     TAR_O=tar_options,\
                     TAR_PATH=tar_path,\
                     G=TOGROUND_PATH,\
@@ -1212,7 +1215,7 @@ def run_experiment():
 
     # Package thumbnails for downlinking.
     if cfg.downlink_thumbnails:
-        tar_path = utils.package_files_for_downlinking("jpeg", cfg.downlink_log_if_no_images, START_TIME, True, False)
+        tar_path = utils.package_files_for_downlinking("jpeg", cfg.downlink_log_if_no_images, cfg.do_clustering, START_TIME, True, False)
 
         if tar_path is not None:
             # Use this flag to log later so that we don't create a new log file now that will end up being packaged if we are also tarring raw image files generated in previous runs.
@@ -1223,7 +1226,7 @@ def run_experiment():
 
     # Package compressed raws for downlinking.
     if cfg.downlink_compressed_raws and raw_compressor is not None:
-        tar_path = utils.package_files_for_downlinking(cfg.raw_compression_type, cfg.downlink_log_if_no_images, START_TIME, True, False)
+        tar_path = utils.package_files_for_downlinking(cfg.raw_compression_type, cfg.downlink_log_if_no_images, cfg.do_clustering, START_TIME, True, False)
 
         if tar_path is not None:
             # This is not necessary here since ther eis no more tarring of previous files after this point but kept this way for consistency.
@@ -1318,7 +1321,7 @@ def run_experiment():
 
             if done:
                 # Exit the image acquisition loop in case toGround disk size is too large.
-                logger.info("Exiting: the experiment's toGround folder is greater than the configured quota: {TG} KB > {Q} KB.".format(\
+                logger.info("Exiting: the experiment's toGround folder disk usage is greater than the configured quota: {TG} KB > {Q} KB.".format(\
                     TG=toGround_size,\
                     Q=cfg.quota_toGround))
 
@@ -1576,14 +1579,14 @@ def run_experiment():
 
     # Package thumbnails for downlinking.
     if cfg.downlink_thumbnails:
-        tar_path = utils.package_files_for_downlinking("jpeg", cfg.downlink_log_if_no_images, START_TIME, False, True)
+        tar_path = utils.package_files_for_downlinking("jpeg", cfg.downlink_log_if_no_images, cfg.do_clustering, START_TIME, False, True)
 
         if tar_path is not None:
             utils.split_and_move_tar(tar_path, cfg.downlink_compressed_split)
 
     # Package compressed raws for downlinking.
     if cfg.downlink_compressed_raws and raw_compressor is not None:
-        tar_path = utils.package_files_for_downlinking(cfg.raw_compression_type, cfg.downlink_log_if_no_images, START_TIME, False, True)
+        tar_path = utils.package_files_for_downlinking(cfg.raw_compression_type, cfg.downlink_log_if_no_images, cfg.do_clustering, START_TIME, False, True)
 
         if tar_path is not None:
             utils.split_and_move_tar(tar_path, cfg.downlink_compressed_split)
