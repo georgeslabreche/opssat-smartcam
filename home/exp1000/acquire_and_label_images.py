@@ -47,6 +47,9 @@ KMEANS_BIN_MODE_COLLECT = 1
 KMEANS_BIN_MODE_TRAIN = 2
 KMEANS_BIN_MODE_BATCH_PREDICT = 4
 
+# The image type to use as training image data.
+KMEANS_IMG_TRAIN_TYPE = "jpeg"
+
 # The K-Means training data folder path.
 KMEANS_TRAINING_DATA_DIR_PATH = BASE_PATH + '/kmeans/training_data'
 
@@ -244,13 +247,16 @@ class AppConfig:
         self.do_clustering = self.config.getboolean('clustering', 'cluster')
 
         # To which labeled image should the clustering apply to.
-        self.cluster_for_labels = json.loads(self.config.get('clustering', 'labels_to_cluster'))
+        self.cluster_for_labels = json.loads(self.config.get('clustering', 'cluster_for_labels'))
 
         # The K value for the K-Means algorithm.
-        self.cluster_k = self.config.getint('clustering', 'k')
+        self.cluster_k = self.config.getint('clustering', 'cluster_k')
 
         # How many training images need to be collected before training the clustering model.
-        self.cluster_training_threshold = self.config.getint('clustering', 'training_threshold')
+        self.cluster_collect_threshold = self.config.getint('clustering', 'cluster_collect_threshold')
+
+        # The image types on which to apply clustering.
+        self.cluster_img_types = json.loads(self.config.get('clustering', 'cluster_img_types'))
 
 
 class ImageMetaData:
@@ -995,7 +1001,7 @@ class ImageClassifier:
         return None
 
     
-    def cluster_labeled_images(self, cluster_for_labels, k, training_data_size_threshold):
+    def cluster_labeled_images(self, cluster_for_labels, k, training_data_size_threshold, image_types_to_cluster):
         """Train or apply K-Means clustering to subclassify images that have already been classifed byt the TensorFlow Lite classification pipeline."""
 
         for label in cluster_for_labels:
@@ -1016,11 +1022,13 @@ class ImageClassifier:
                     # The centroids CSV file can be used to cluster the thumbnail images.
 
                     # The command string to cluster the images using K-Means.
-                    cmd = "{BIN} {M} {IMG_DIR} {CLUSTER_DIR} {C}".format(
+                    cmd = "{BIN} {M} {IMG_DIR} {IMG_TRAIN_TYPE} {CLUSTER_DIR} {IMG_CLUSTER_TYPE} {C}".format(
                         BIN=KMEANS_BIN_PATH,
                         M=KMEANS_BIN_MODE_BATCH_PREDICT,
                         IMG_DIR=toGround_label_dir,
+                        IMG_TRAIN_TYPE=KMEANS_IMG_TRAIN_TYPE,
                         CLUSTER_DIR=toGround_label_dir,
+                        IMG_CLUSTER_TYPE=",".join(image_types_to_cluster),
                         C=centroids_file_path)
 
                     # Log the clustering command that will be executed.
@@ -1069,10 +1077,11 @@ class ImageClassifier:
                         if training_data_size < training_data_size_threshold:
                             
                             # The command string to collect training data.
-                            cmd = '{BIN} {M} {IMG_DIR} {T}'.format(
+                            cmd = '{BIN} {M} {IMG_DIR} {IMG_TRAIN_TYPE} {T}'.format(
                                 BIN=KMEANS_BIN_PATH,
                                 M=KMEANS_BIN_MODE_COLLECT,
                                 IMG_DIR=toGround_label_dir,
+                                IMG_TRAIN_TYPE=KMEANS_IMG_TRAIN_TYPE,
                                 T=training_data_file)
 
                             # Log the training command that will be executed.
@@ -1124,10 +1133,11 @@ class ImageClassifier:
                         # Start collecting training data now.
 
                         # The command string to collect training data.
-                        cmd = '{BIN} {M} {IMG_DIR} {T}'.format(
+                        cmd = '{BIN} {M} {IMG_DIR} {IMG_TRAIN_TYPE} {T}'.format(
                             BIN=KMEANS_BIN_PATH,
                             M=KMEANS_BIN_MODE_COLLECT,
                             IMG_DIR=toGround_label_dir,
+                            IMG_TRAIN_TYPE=KMEANS_IMG_TRAIN_TYPE,
                             T=training_data_file)
 
                         # Log the training command that will be executed.
@@ -1560,7 +1570,7 @@ def run_experiment():
     # Do image clustering if enabled to do so in the config file.
     # WARNING: if auto thumbnail downlink is not enabled then the collected training data will include duplicate images.
     if cfg.do_clustering:
-        img_classifier.cluster_labeled_images(cfg.cluster_for_labels, cfg.cluster_k, cfg.cluster_training_threshold)
+        img_classifier.cluster_labeled_images(cfg.cluster_for_labels, cfg.cluster_k, cfg.cluster_collect_threshold, cfg.cluster_img_types)
 
     # Tar the images and the log files for downlinking.
 
