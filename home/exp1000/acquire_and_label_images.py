@@ -1049,7 +1049,7 @@ class ImageClassifier:
                     # If program ran without errors then just log success.
                     if return_code == 0:
                         # Log summary of what happened.
-                        logger.info("Successfully used K-Means clustering to subclassified labeled images.")
+                        logger.info("Successfully used K-Means clustering to subclassify labeled images.")
                     
                     else: 
                         # Log error code and message if the K-Means program returned and error code.
@@ -1129,7 +1129,7 @@ class ImageClassifier:
                             # Make sure that hte K-Means executable binary is spawed as a separate process so that it still runs even if the parent process that 
                             # spawed it is killed. Training might take a bit of time to complete so we want to prevent it from blocking the SmarCam's execution.
                             # We want the training to happen and complete in the background even after the SmartCam app has finished running.
-                            subprocess.Popen(cmd, preexec_fn=os.setsid)
+                            subprocess.Popen(cmd, preexec_fn=os.setsid, shell=True)
 
                     else:
                         # Training data CSV file does not exist.
