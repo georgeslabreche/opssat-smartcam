@@ -42,6 +42,11 @@ FAPEC_BIN_PATH = '/home/exp100/fapec'
 # The K-Means image clustering binary file path.
 KMEANS_BIN_PATH = BASE_PATH + '/bin/kmeans/K_Means'
 
+# The different modes for the K-Means program.
+KMEANS_BIN_MODE_COLLECT = 1
+KMEANS_BIN_MODE_TRAIN = 2
+KMEANS_BIN_MODE_BATCH_PREDICT = 4
+
 # The K-Means training data folder path.
 KMEANS_TRAINING_DATA_DIR_PATH = BASE_PATH + '/kmeans/training_data'
 
@@ -1013,7 +1018,7 @@ class ImageClassifier:
                     # The command string to cluster the images using K-Means.
                     cmd = "{BIN} {M} {IMG_DIR} {CLUSTER_DIR} {C}".format(
                         BIN=KMEANS_BIN_PATH,
-                        M=4,
+                        M=KMEANS_BIN_MODE_BATCH_PREDICT,
                         IMG_DIR=toGround_label_dir,
                         CLUSTER_DIR=toGround_label_dir,
                         C=centroids_file_path)
@@ -1066,7 +1071,7 @@ class ImageClassifier:
                             # The command string to collect training data.
                             cmd = '{BIN} {M} {IMG_DIR} {T}'.format(
                                 BIN=KMEANS_BIN_PATH,
-                                M=1,
+                                M=KMEANS_BIN_MODE_COLLECT,
                                 IMG_DIR=toGround_label_dir,
                                 T=training_data_file)
 
@@ -1100,7 +1105,7 @@ class ImageClassifier:
                             # The training command string.
                             cmd = '{BIN} {M} {K} {T} {C}'.format(
                                 BIN=KMEANS_BIN_PATH,
-                                M=2,
+                                M=KMEANS_BIN_MODE_TRAIN,
                                 K=k,
                                 T=training_data_file, 
                                 C=centroids_file_path)
@@ -1121,7 +1126,7 @@ class ImageClassifier:
                         # The command string to collect training data.
                         cmd = '{BIN} {M} {IMG_DIR} {T}'.format(
                             BIN=KMEANS_BIN_PATH,
-                            M=1,
+                            M=KMEANS_BIN_MODE_COLLECT,
                             IMG_DIR=toGround_label_dir,
                             T=training_data_file)
 
