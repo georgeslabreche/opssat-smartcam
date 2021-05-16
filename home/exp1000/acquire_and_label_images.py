@@ -729,7 +729,7 @@ class Utils:
                     logger.info("Tarring {T} file(s) for downlink.".format(T=image_count))
 
                 # Use tar to package image and log files into the filestore's toGround folder.
-                os.system('tar {TAR_O} {TAR_PATH} {G}/**/*.{FILE_EXT} {L}/*.log {L}/*.csv --remove-files'.format(\
+                os.system('tar {TAR_O} {TAR_PATH} {G}/**/*.{FILE_EXT} {G}/**/**/*.{FILE_EXT} {L}/*.log {L}/*.csv --remove-files'.format(\
                     TAR_O=tar_options,\
                     TAR_PATH=tar_path,\
                     G=TOGROUND_PATH,\
