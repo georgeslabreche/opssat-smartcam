@@ -990,7 +990,7 @@ class ImageClassifier:
         return None
 
     
-    def cluster_labeled_images(self, cluster_for_labels, K, training_data_size_threshold):
+    def cluster_labeled_images(self, cluster_for_labels, k, training_data_size_threshold):
         """Train or apply K-Means clustering to subclassify images that have already been classifed byt the TensorFlow Lite classification pipeline."""
 
         for label in cluster_for_labels:
@@ -1100,7 +1100,8 @@ class ImageClassifier:
                             # The training command string.
                             cmd = '{BIN} {M} {K} {T} {C}'.format(
                                 BIN=KMEANS_BIN_PATH,
-                                M=2, K=k,
+                                M=2,
+                                K=k,
                                 T=training_data_file, 
                                 C=centroids_file_path)
                             
