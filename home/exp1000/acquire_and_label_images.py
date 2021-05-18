@@ -1572,6 +1572,10 @@ def run_experiment():
     if cfg.do_clustering:
         img_classifier.cluster_labeled_images(cfg.cluster_for_labels, cfg.cluster_k, cfg.cluster_collect_threshold, cfg.cluster_img_types)
 
+    # Log some housekeeping data.
+    # Make sure this is done before packaging files for downlinking.
+    utils.log_housekeeping_data()
+
     # Tar the images and the log files for downlinking.
 
     # Package thumbnails for downlinking.
@@ -1588,8 +1592,6 @@ def run_experiment():
         if tar_path is not None:
             utils.split_and_move_tar(tar_path, cfg.downlink_compressed_split)
 
-    # Log some housekeeping data.
-    utils.log_housekeeping_data()
 
 
 def setup_logger(name, log_file, formatter, level=logging.INFO):
