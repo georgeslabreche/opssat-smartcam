@@ -1567,9 +1567,6 @@ def run_experiment():
     # We have exited the image acquisition and labeling loop.
     # This means that we have finished labeling the acquired images. 
 
-    # Log some housekeeping data.
-    utils.log_housekeeping_data()
-
     # Do image clustering if enabled to do so in the config file.
     # WARNING: if auto thumbnail downlink is not enabled then the collected training data will include duplicate images.
     if cfg.do_clustering:
@@ -1590,6 +1587,9 @@ def run_experiment():
 
         if tar_path is not None:
             utils.split_and_move_tar(tar_path, cfg.downlink_compressed_split)
+
+    # Log some housekeeping data.
+    utils.log_housekeeping_data()
 
 
 def setup_logger(name, log_file, formatter, level=logging.INFO):
