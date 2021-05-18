@@ -1,7 +1,7 @@
 ![OPS-SAT SmartCam Logo](https://raw.githubusercontent.com/georgeslabreche/opssat-smartcam/main/docs/ops-sat_smartcam_logo_transparentbg.png?raw=true)
 
 # Background
-The SmartCam software on the [OPS-SAT](https://www.esa.int/Enabling_Support/Operations/OPS-SAT_your_flying_laboratory) spacecraft is the first use of Artificial Intelligence (AI) by the European Space Agency (ESA) for autonomous planning and scheduling on-board a flying mission. The software's geospatial capability autonomously triggers image acquisitions when the spacecraft is above areas of interest. Inferences from on-board Machine Learning (ML) models classify the captured pictures for downlink prioritization. This is made possible by the spacecraft's powerful processors, capable of running open-source software originally developed for terrestrial systems. Notably, with the [GEOS Geometry Engine](https://trac.osgeo.org/geos/) for geospatial computations and the [TensorFlow Lite](https://www.tensorflow.org/lite) framework for ML model inferences. These features provide new perspectives on how space operations can be designed for future missions given greater in-orbit compute capabilities.
+The SmartCam software on the [OPS-SAT](https://www.esa.int/Enabling_Support/Operations/OPS-SAT_your_flying_laboratory) spacecraft is the first use of Artificial Intelligence (AI) by the European Space Agency (ESA) for autonomous planning and scheduling on-board a flying mission. The software's geospatial capability autonomously triggers image acquisitions when the spacecraft is above areas of interest. Inferences from on-board Machine Learning (ML) models classify the captured pictures for downlink prioritization. This is made possible by the spacecraft's powerful processors, capable of running open-source software originally developed for terrestrial systems. Notably, with the [GEOS Geometry Engine](https://trac.osgeo.org/geos/) for geospatial computations and the [TensorFlow Lite](https://www.tensorflow.org/lite) framework for ML model inferences. Additional image classification can be enabled with unsupervised learning using [k-means clustering](https://github.com/georgeslabreche/kmeans-image-clustering/tree/opssat). These features provide new perspectives on how space operations can be designed for future missions given greater in-orbit compute capabilities.
 
 The SmartCam's image classification pipeline is made "openable" by allowing it to be constructed from crowdsourced trained ML models. These third-party models can be uplinked to the spacecraft and chained into a sequence with configurable branching rules for hyper-specialized classification and subclassification through an autonomous decision-making tree. This mechanism enables open innovation methods to extend on-board ML beyond its original mission requirement while stimulating knowledge transfer from established AI communities into space applications. The use of an industry standard ML framework de-risks and accelerate developing AI for future missions by broadening OPS-SAT's accessibility to AI experimenters established outside of the space sector.
 
@@ -46,7 +46,8 @@ The SmartCam's app configuration is set in the config.ini file. The gist of the 
 5. If the applied label is part of the model's *labels_keep* in config.ini then label the image further with the next model in image classification pipeline.
 6. Repeat step 5 until either the applied label is not part of the current model's configured *labels_keep* or until the last model of the pipeline has been applied.
 7. The labeled image is moved into the experiment and the filestore's toGround folders depending on the keep images and downlink configurations set in config.ini.
-8. Repeat steps 1 through 7 until the image acquisition loop as gone through the number of iterations set by *gen_number* in config.ini.
+8. Subclassify the labeled images into cluster folders via k-means clustering (or train the clustering model if not enough training images have been collected yet).
+9. Repeat steps 1 through 8 until the image acquisition loop as gone through the number of iterations set by *gen_number* in config.ini.
 
 ### 3.2. Installation
 #### 3.2.1. Dependencies
@@ -119,6 +120,13 @@ There are two types of image acquisition that can beet set: Polling or Area-of-I
 - *input_mean* - mean of the image input.
 - *input_std* - standard deviation of the image input.
 - *confidence_threshold* - minimum confidence level required to apply the label predicted by the neural network model.
+
+### 4.5. Clustering
+- *cluster* - flag to enable or disable image clustering with k-means.
+- *cluster_for_labels* - labels of images classified by TensorFlow Lite that should be subclassified with k-means clustering.
+- *cluster_k* - number of clusters.
+- *cluster_collect_threshold* - number of images to collect as training data before training the clustering model.
+- *cluster_img_types* - list of image files type to move into the cluster folders during clustering.
 
 #### 4.4.1. Data Normalization
 A note on what *input_mean* and *input_std* are for, taken verbatim from [this blogpost](https://medium.com/@joel_34096/k-means-clustering-for-image-classification-a648f28bdc47):
