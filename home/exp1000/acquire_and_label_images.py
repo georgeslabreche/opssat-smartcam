@@ -36,8 +36,25 @@ FILESTORE_TOGROUND_PATH = '/home/root/esoc-apps/fms/filestore/toGround'
 # Image classifier program file path.
 IMAGE_CLASSIFIER_BIN_PATH = BASE_PATH + '/bin/tensorflow/lite/c/image_classifier'
 
-# The fapce compression binary file path.
+# The fapec compression binary file path.
 FAPEC_BIN_PATH = '/home/exp100/fapec'
+
+# The K-Means image clustering binary file path.
+KMEANS_BIN_PATH = BASE_PATH + '/bin/kmeans/K_Means'
+
+# The different modes for the K-Means program.
+KMEANS_BIN_MODE_COLLECT = 1
+KMEANS_BIN_MODE_TRAIN = 2
+KMEANS_BIN_MODE_BATCH_PREDICT = 4
+
+# The image type to use as training image data.
+KMEANS_IMG_TRAIN_TYPE = "jpeg"
+
+# The K-Means training data folder path.
+KMEANS_TRAINING_DATA_DIR_PATH = BASE_PATH + '/kmeans/training_data'
+
+# The K-Means centroids folder path.
+KMEANS_CENTROIDS_DIR_PATH = BASE_PATH + '/kmeans/centroids'
 
 # The supported compression types.
 SUPPORTED_COMPRESSION_TYPES = ['fapec']
@@ -81,6 +98,9 @@ class AppConfig:
 
         # Init the img config section properties.
         self.init_img_props()
+
+        # Init the K-Means image clustering config section properties.
+        self.init_clustering_props()
 
 
     def init_conf_props(self):
@@ -161,6 +181,7 @@ class AppConfig:
 
         return True
 
+
     def init_camera_props(self):
         """Fetch camera parameters."""
 
@@ -217,6 +238,25 @@ class AppConfig:
         self.jpeg_processing = self.config.get('jpeg', 'jpeg_processing')
         if self.jpeg_processing != 'pnmnorm' and self.jpeg_processing != 'pnmhisteq':
             self.jpeg_processing = 'none'
+
+
+    def init_clustering_props(self):
+        """Fetch configuration parameters for image clustering with K-Means unsupervised learning"""
+
+        # Flag to enable or disable clustering with K-Means.
+        self.do_clustering = self.config.getboolean('clustering', 'cluster')
+
+        # To which labeled image should the clustering apply to.
+        self.cluster_for_labels = json.loads(self.config.get('clustering', 'cluster_for_labels'))
+
+        # The K value for the K-Means algorithm.
+        self.cluster_k = self.config.getint('clustering', 'cluster_k')
+
+        # How many training images need to be collected before training the clustering model.
+        self.cluster_collect_threshold = self.config.getint('clustering', 'cluster_collect_threshold')
+
+        # The image types on which to apply clustering.
+        self.cluster_img_types = json.loads(self.config.get('clustering', 'cluster_img_types'))
 
 
 class ImageMetaData:
@@ -654,7 +694,7 @@ class Utils:
         os.system(cmd_move_images)
 
 
-    def package_files_for_downlinking(self, file_ext, downlink_log_if_no_images, experiment_start_time, files_from_previous_runs, do_logging):
+    def package_files_for_downlinking(self, file_ext, downlink_log_if_no_images, do_clustering, experiment_start_time, files_from_previous_runs, do_logging):
         """Package the files for downlinking.
         
         Logging is optional via the do_logging flag in case we start the experiment by tarring files leftover from a previous run that was abruptly interrupted.
@@ -688,13 +728,16 @@ class Utils:
                 if do_logging:
                     logger.info("Tarring {T} file(s) for downlink.".format(T=image_count))
 
+                # The paths of the image files to tar depends on whether or not we are clustering.
+                img_files_to_tar = '{G}/**/*.{FILE_EXT}'.format(G=TOGROUND_PATH, FILE_EXT=file_ext)
+
+                # Include cluster subfolders.
+                if do_clustering:
+                    img_files_to_tar = img_files_to_tar + ' {G}/**/**/*.{FILE_EXT}'.format(G=TOGROUND_PATH, FILE_EXT=file_ext)
+
                 # Use tar to package image and log files into the filestore's toGround folder.
-                os.system('tar {TAR_O} {TAR_PATH} {G}/**/*.{FILE_EXT} {L}/*.log {L}/*.csv --remove-files'.format(\
-                    TAR_O=tar_options,\
-                    TAR_PATH=tar_path,\
-                    G=TOGROUND_PATH,\
-                    FILE_EXT=file_ext,\
-                    L=LOG_PATH))
+                tar_cmd = 'tar {TAR_O} {TAR_PATH} '.format(TAR_O=tar_options, TAR_PATH=tar_path) + img_files_to_tar + ' {L}/*.log {L}/*.csv --remove-files'.format(L=LOG_PATH)
+                os.system(tar_cmd)
 
                 # Return experiment toGround path to tar file.
                 return tar_path
@@ -960,6 +1003,167 @@ class ImageClassifier:
 
         return None
 
+    
+    def cluster_labeled_images(self, cluster_for_labels, k, training_data_size_threshold, image_types_to_cluster):
+        """Train or apply K-Means clustering to subclassify images that have already been classifed byt the TensorFlow Lite classification pipeline."""
+
+        for label in cluster_for_labels:
+            # Build the path to the labeled images that we want to cluster/sub-classify.
+            toGround_label_dir = TOGROUND_PATH + '/' + label
+            
+            # Only cluster/sub-classify the labeled images of thumbnail images exist for that label group.
+            # If a clustering model has not been trained yet the start collecting training data or train the model if we have collected enough data from previous runs.
+            if os.path.exists(toGround_label_dir):
+
+                # Build the file path of the label's cluster centroids CSV file.
+                centroids_file_path = KMEANS_CENTROIDS_DIR_PATH + '/' + label + '.csv'
+
+                # Check if K-Means centroids CSV file exists.
+                # A centroids CSV file can be thought as a the serialized output of the trained model.
+                if os.path.exists(centroids_file_path):
+                    # The label in question has a centroids CSV file associated to it.
+                    # The centroids CSV file can be used to cluster the thumbnail images.
+
+                    # The command string to cluster the images using K-Means.
+                    cmd = "{BIN} {M} {IMG_DIR} {IMG_TRAIN_TYPE} {CLUSTER_DIR} {IMG_CLUSTER_TYPE} {C}".format(
+                        BIN=KMEANS_BIN_PATH,
+                        M=KMEANS_BIN_MODE_BATCH_PREDICT,
+                        IMG_DIR=toGround_label_dir,
+                        IMG_TRAIN_TYPE=KMEANS_IMG_TRAIN_TYPE,
+                        CLUSTER_DIR=toGround_label_dir,
+                        IMG_CLUSTER_TYPE=",".join(image_types_to_cluster),
+                        C=centroids_file_path)
+
+                    # Log the clustering command that will be executed.
+                    logger.info('Executing K-Means command: {CMD}'.format(CMD=cmd))
+
+                    # Create a subprocess to execute the K-Means program.
+                    process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+
+                    # Get program stdout and stderr.
+                    std_out, std_err = process.communicate()
+
+                    # Get program error code.
+                    return_code = process.returncode
+
+                    # If program ran without errors then just log success.
+                    if return_code == 0:
+                        # Log summary of what happened.
+                        logger.info("Successfully used K-Means clustering to subclassify labeled images.")
+                    
+                    else: 
+                        # Log error code and message if the K-Means program returned and error code.
+                        logger.error("K-Means clustering returned error code {E}. {M}".format(E=return_code, M=std_err.decode("utf-8")))
+
+                else:
+                    # If the centroids CSV file doesn't exist then it means that the clustering model has not been trained yet.
+                    # Check if we collected enough training data to train the clustering model.
+                    # If we haven't collected enough training data then keep collecting training data.
+                    # A single training data input is simply the grayscaled pixel values of a downsampled thumbnail image that is used to train the model.
+                    # The training data CSV file are rows of training image inputs with each row being a collection of the grayscaled pixel values for an training image.
+
+                    # Build the file path to the CSV file where all training data is persisted.
+                    training_data_file = KMEANS_TRAINING_DATA_DIR_PATH + '/' + label + '.csv'
+
+                    # If the training data CSV file exist then we either have to keep collecting data (appending new training data rows to the file)
+                    # or use all the thus far collected training data to train a K-Means clustering model.
+                    # Which approach we take depends on the training data size threshold set in the app's config file.
+                    if os.path.exists(training_data_file):
+
+                        # Count the number of training inputs collected thus far in the training data CSV file.
+                        training_data_size = sum(1 for line in open(training_data_file))
+
+                        # Not enough training data has been collected yet. Keep collecting training data.
+                        # Invoke the appropriate K-Means executable binary command and make sure this Python app waits for the program to be completed before
+                        # continuing. This is because the training data that we are collecting are the thumbnail image files that are currently in the app's
+                        # toGround folder and these images will be removed during the thumbnail tarring phase of the SmartCam app.
+                        if training_data_size < training_data_size_threshold:
+                            
+                            # The command string to collect training data.
+                            cmd = '{BIN} {M} {IMG_DIR} {IMG_TRAIN_TYPE} {T}'.format(
+                                BIN=KMEANS_BIN_PATH,
+                                M=KMEANS_BIN_MODE_COLLECT,
+                                IMG_DIR=toGround_label_dir,
+                                IMG_TRAIN_TYPE=KMEANS_IMG_TRAIN_TYPE,
+                                T=training_data_file)
+
+                            # Log the training command that will be executed.
+                            logger.info('Executing K-Means command: {CMD}'.format(CMD=cmd))
+
+                            # Create a subprocess to execute the K-Means program.
+                            process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+
+                            # Get program stdout and stderr.
+                            std_out, std_err = process.communicate()
+
+                            # Get program error code.
+                            return_code = process.returncode
+
+                            # If program ran without errors then just log success.
+                            if return_code == 0:
+                                # Log summary of what happened.
+                                logger.info("Appended {C} training data inputs into {T}.".format(C=std_out.decode("utf-8"), T=training_data_file))
+                            
+                            else: 
+                                # Log error code and message if the K-Means program returned and error code.
+                                logger.error("K-Means training data collection returned error code {E}. {M}".format(E=return_code, M=std_err.decode("utf-8")))
+
+                        else:
+                            # We can proceed with training the clustering model if enough training data has been collected since the last time the app was executed.
+                            # The trained model will be serialized as a centroids CSV file for the current label group.
+                            # However, we won't proceed with clustering the current batch of images because training will happen in the backround (fire and forget)
+                            # so we want to wait until the next run of the SmartCam app to check if the centroids file was successfully created or not.
+                            
+                            # The training command string.
+                            cmd = '{BIN} {M} {K} {T} {C}'.format(
+                                BIN=KMEANS_BIN_PATH,
+                                M=KMEANS_BIN_MODE_TRAIN,
+                                K=k,
+                                T=training_data_file, 
+                                C=centroids_file_path)
+                            
+                            # Log the training command that will be executed.
+                            logger.info('Executing K-Means command: {CMD}'.format(CMD=cmd))
+
+                            # Execute the training command. Invoke the K-Means executable binary without blocking this Python app (fire and forget).
+                            # Make sure that hte K-Means executable binary is spawed as a separate process so that it still runs even if the parent process that 
+                            # spawed it is killed. Training might take a bit of time to complete so we want to prevent it from blocking the SmarCam's execution.
+                            # We want the training to happen and complete in the background even after the SmartCam app has finished running.
+                            subprocess.Popen(cmd, preexec_fn=os.setsid, shell=True)
+
+                    else:
+                        # Training data CSV file does not exist.
+                        # Start collecting training data now.
+
+                        # The command string to collect training data.
+                        cmd = '{BIN} {M} {IMG_DIR} {IMG_TRAIN_TYPE} {T}'.format(
+                            BIN=KMEANS_BIN_PATH,
+                            M=KMEANS_BIN_MODE_COLLECT,
+                            IMG_DIR=toGround_label_dir,
+                            IMG_TRAIN_TYPE=KMEANS_IMG_TRAIN_TYPE,
+                            T=training_data_file)
+
+                        # Log the training command that will be executed.
+                        logger.info('Executing K-Means command: {CMD}'.format(CMD=cmd))
+
+                        # Create a subprocess to execute the K-Means program.
+                        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+
+                        # Get program stdout and stderr.
+                        std_out, std_err = process.communicate()
+
+                        # Get program error code.
+                        return_code = process.returncode
+
+                        # If program ran without errors then just log success.
+                        if return_code == 0:
+                            # Log summary of what happened.
+                            logger.info("Initialized trainig data file with {C} inputs into {T}.".format(C=std_out.decode("utf-8"), T=training_data_file))
+                        
+                        else: 
+                            # Log error code and message if the K-Means program returned and error code.
+                            logger.error("K-Means training data collection returned error code {E}. {M}".format(E=return_code, M=std_err.decode("utf-8")))
+
 
 def run_experiment():
     """Run the experiment."""
@@ -1011,7 +1215,7 @@ def run_experiment():
 
     # Package thumbnails for downlinking.
     if cfg.downlink_thumbnails:
-        tar_path = utils.package_files_for_downlinking("jpeg", cfg.downlink_log_if_no_images, START_TIME, True, False)
+        tar_path = utils.package_files_for_downlinking("jpeg", cfg.downlink_log_if_no_images, cfg.do_clustering, START_TIME, True, False)
 
         if tar_path is not None:
             # Use this flag to log later so that we don't create a new log file now that will end up being packaged if we are also tarring raw image files generated in previous runs.
@@ -1022,7 +1226,7 @@ def run_experiment():
 
     # Package compressed raws for downlinking.
     if cfg.downlink_compressed_raws and raw_compressor is not None:
-        tar_path = utils.package_files_for_downlinking(cfg.raw_compression_type, cfg.downlink_log_if_no_images, START_TIME, True, False)
+        tar_path = utils.package_files_for_downlinking(cfg.raw_compression_type, cfg.downlink_log_if_no_images, cfg.do_clustering, START_TIME, True, False)
 
         if tar_path is not None:
             # This is not necessary here since ther eis no more tarring of previous files after this point but kept this way for consistency.
@@ -1117,7 +1321,7 @@ def run_experiment():
 
             if done:
                 # Exit the image acquisition loop in case toGround disk size is too large.
-                logger.info("Exiting: the experiment's toGround folder is greater than the configured quota: {TG} KB > {Q} KB.".format(\
+                logger.info("Exiting: the experiment's toGround folder disk usage is greater than the configured quota: {TG} KB > {Q} KB.".format(\
                     TG=toGround_size,\
                     Q=cfg.quota_toGround))
 
@@ -1363,24 +1567,31 @@ def run_experiment():
     # We have exited the image acquisition and labeling loop.
     # This means that we have finished labeling the acquired images. 
 
+    # Do image clustering if enabled to do so in the config file.
+    # WARNING: if auto thumbnail downlink is not enabled then the collected training data will include duplicate images.
+    if cfg.do_clustering:
+        img_classifier.cluster_labeled_images(cfg.cluster_for_labels, cfg.cluster_k, cfg.cluster_collect_threshold, cfg.cluster_img_types)
+
     # Log some housekeeping data.
+    # Make sure this is done before packaging files for downlinking.
     utils.log_housekeeping_data()
 
     # Tar the images and the log files for downlinking.
 
     # Package thumbnails for downlinking.
     if cfg.downlink_thumbnails:
-        tar_path = utils.package_files_for_downlinking("jpeg", cfg.downlink_log_if_no_images, START_TIME, False, True)
+        tar_path = utils.package_files_for_downlinking("jpeg", cfg.downlink_log_if_no_images, cfg.do_clustering, START_TIME, False, True)
 
         if tar_path is not None:
             utils.split_and_move_tar(tar_path, cfg.downlink_compressed_split)
 
     # Package compressed raws for downlinking.
     if cfg.downlink_compressed_raws and raw_compressor is not None:
-        tar_path = utils.package_files_for_downlinking(cfg.raw_compression_type, cfg.downlink_log_if_no_images, START_TIME, False, True)
+        tar_path = utils.package_files_for_downlinking(cfg.raw_compression_type, cfg.downlink_log_if_no_images, cfg.do_clustering, START_TIME, False, True)
 
         if tar_path is not None:
             utils.split_and_move_tar(tar_path, cfg.downlink_compressed_split)
+
 
 
 def setup_logger(name, log_file, formatter, level=logging.INFO):

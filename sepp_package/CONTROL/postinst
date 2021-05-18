@@ -4,6 +4,7 @@ chmod -R 770 /home/exp1000
 chmod +x /home/exp1000/start_exp1000.sh
 chmod +x /home/exp1000/stop_exp1000.sh
 chmod +x /home/exp1000/bin/tensorflow/lite/c/image_classifier
+chmod +x /home/exp1000/bin/kmeans/K_Means
 ln -s /home/exp1000/bin/external/farmhash_archive/libfarmhash.so /home/exp1000/bin/_solib_armhf/libexternal_Sfarmhash_Uarchive_Slibfarmhash.so
 ln -s /home/exp1000/bin/external/fft2d/libfft2d.so /home/exp1000/bin/_solib_armhf/libexternal_Sfft2d_Slibfft2d.so
 ln -s /home/exp1000/bin/external/flatbuffers/src/libflatbuffers.so /home/exp1000/bin/_solib_armhf/libexternal_Sflatbuffers_Ssrc_Slibflatbuffers.so
