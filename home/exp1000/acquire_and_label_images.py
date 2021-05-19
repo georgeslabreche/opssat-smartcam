@@ -830,7 +830,7 @@ class HDCamera:
         """Acquire an image with the on-board camera."""
 
         # Build the image acquisition execution command string.
-        cmd_image_acquisition = 'ims100_testapp -R {R} -G {G} -B {B} -c /dev/ttyACM0 -m /dev/sda -v 0 -n 1 -p -e {E} >> {L} 2>&1'.format(\
+        cmd_image_acquisition = 'ims100_testapp -R {R} -G {G} -B {B} -c /dev/cam_tty -m /dev/cam_sd -v 0 -n 1 -p -e {E} >> {L} 2>&1'.format(\
             R=self.gains[0],\
             G=self.gains[1],\
             B=self.gains[2],\
