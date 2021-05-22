@@ -27,6 +27,8 @@ BASE_PATH = '/home/exp' + str(EXP_ID)
 # The experiment's config file path.
 CONFIG_FILE = BASE_PATH + '/config.ini'
 
+STOP_FILE = BASE_PATH + '/.stop'
+
 # The experiment's toGround folder path.
 TOGROUND_PATH = BASE_PATH + '/toGround'
 
@@ -1285,6 +1287,13 @@ def run_experiment():
     # Image acquisition loop.
     while not done:
 
+        # The .done file exists if a stop experiment command was issued.
+        # Exit the image acquisition loop if it exists.
+        if os.path.exists(STOP_FILE):
+            logger.info("Stop experiment triggered: exiting the image acquisition loop and shutting down the app.")
+            done = True
+            break
+
         # Use the existance of a png file as an inficator on whether or not an image was successfully acquired.
         file_png = None
 
@@ -1592,6 +1601,17 @@ def run_experiment():
         if tar_path is not None:
             utils.split_and_move_tar(tar_path, cfg.downlink_compressed_split)
 
+    # Clean things up.
+    utils.cleanup()
+
+    # Last operation before exiting the app: remove the hidden .stop file if it exists.
+    # The .stop file is created when the stopExperiment command invokes the stop_exp1000.sh script.
+    # The .stop file serves as a flag that signals the app to break out of the image acquisition loop so that the app can terminate.
+    # If the .stop file is not removed then the experiment will exit the image acquisition loop as soon as it enters it.
+    # Checking for the .stop file and removing it is also done when starting the app, just in case the app was ungracefully shutdown
+    # during its previous run.
+    if os.path.exists(STOP_FILE):
+        os.remove(STOP_FILE)
 
 
 def setup_logger(name, log_file, formatter, level=logging.INFO):
@@ -1617,6 +1637,14 @@ def setup_logger(name, log_file, formatter, level=logging.INFO):
 
 if __name__ == '__main__':
     """Run the main program loop."""
+
+    # Remove the hidden .stop file if it exists.
+    # The .stop file is created when the stopExperiment command invokes the stop_exp1000.sh script.
+    # The .stop file serves as a flag that signals the app to break out of the image acquisition loop so that the app can terminate.
+    # Removing this file should have already been done after gracefully exiting the app but we repeat the operation here in case
+    # the app was ungracefully terminated during its previous run and the .stop file was left lingering.
+    if os.path.exists(STOP_FILE):
+        os.remove(STOP_FILE)
 
     # Start the app.
     run_experiment()
