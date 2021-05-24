@@ -1160,7 +1160,7 @@ class ImageClassifier:
                         # If program ran without errors then just log success.
                         if return_code == 0:
                             # Log summary of what happened.
-                            logger.info("Initialized trainig data file with {C} inputs into {T}.".format(C=std_out.decode("utf-8"), T=training_data_file))
+                            logger.info("Initialized training data file with {C} inputs into {T}.".format(C=std_out.decode("utf-8"), T=training_data_file))
                         
                         else: 
                             # Log error code and message if the K-Means program returned and error code.
