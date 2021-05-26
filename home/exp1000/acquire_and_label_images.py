@@ -1309,7 +1309,7 @@ def run_experiment():
 
             if error_count >= cfg.max_error_count:
                 # Maximum error count reached. Exit image acquisition loop to terminate application.
-                logger.info("Exit image acquisition loop: reached meximum error count.")
+                logger.info("Exit image acquisition loop: reached maximum error count.")
                 break
        
         # Start of a new image acquisition loop iteration. Assume success.
