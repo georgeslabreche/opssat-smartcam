@@ -1,4 +1,5 @@
 .vscode
+.stop
 *.ims_rgb
 *.png
 *.jpeg
