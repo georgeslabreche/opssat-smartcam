@@ -6,10 +6,20 @@ The SmartCam software on the [OPS-SAT](https://www.esa.int/Enabling_Support/Oper
 The SmartCam's image classification pipeline is made "openable" by allowing it to be constructed from crowdsourced trained ML models. These third-party models can be uplinked to the spacecraft and chained into a sequence with configurable branching rules for hyper-specialized classification and subclassification through an autonomous decision-making tree. This mechanism enables open innovation methods to extend on-board ML beyond its original mission requirement while stimulating knowledge transfer from established AI communities into space applications. The use of an industry standard ML framework de-risks and accelerate developing AI for future missions by broadening OPS-SAT's accessibility to AI experimenters established outside of the space sector.
 
 # Citation
-We appreciate citations if you reference this work in a scientific publication. Thank you!
+We appreciate citations if you reference this work in our upcoming scientific publication. Thank you!
 
 ## APA
-Labrèche, G., Evans, D., Marszk, D., Mladenov, T., Shiradhonkar, V., Zelenevskiy, V. (2021). Crowdsourcing Machine Learning Models for Autonomous In-Flight Operations with TensorFlow Lite On-Board the OPS-SAT Spacecraft. In _The 16th International Conference on Space Operations, SpaceOps_. AIAA.
+Labrèche, G., Evans, D., Marszk, D., Mladenov, T., Shiradhonkar, V., Soto, T., & Zelenevskiy, V. (2022). OPS-SAT Spacecraft Autonomy with TensorFlow Lite, Unsupervised Learning, and Online Machine Learning. _2022 IEEE Aerospace Conference._
+
+## BibTex
+```
+@article{LabrecheIEEEAeroconf2022,
+  title={OPS-SAT Spacecraft Autonomy with TensorFlow Lite, Unsupervised Learning, and Online Machine Learning},
+  author={Georges Labrèche and David Evans and Dominik Marszk and Tom Mladenov and Vasundhara Shiradhonkar and Tanguy Soto and Vladimir Zelenevskiy},
+  journal={2022 IEEE Aerospace Conference},
+  year={2022}
+}
+```
 
 # Instructions
 **Table of Contents:**
