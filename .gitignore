@@ -8,3 +8,4 @@
 !docs/*.jpg
 !pub/Rscripts/plots/*.png
 !pub/diagrams/*.png
+.Rproj.user

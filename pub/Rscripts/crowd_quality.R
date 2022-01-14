@@ -29,7 +29,7 @@ if(WRITE_PNG == TRUE){
 }
 
 # Remove title whitespace.
-par(mar=c(3,3,1.2,2)+0.1)
+par(mar=c(3,3,1.2,0.8)+0.1)
 
 # The mean of crowd distribution.
 crowd_mean = 1
@@ -57,10 +57,10 @@ plot(expert_x, expert_y, type='l',
      xaxt='n', yaxt='n', lwd=4, col=pal[2])
 
 # X-axis label.
-mtext('Solution quality', side=1, line=1)
+mtext('Solution quality', side=1, line=1, cex=1.5)
 
 # Y-axis label.
-mtext('Solution frequency', side=2, line=1)
+mtext('Solution frequency', side=2, line=1, cex=1.5)
 
 # Draw area in which the best crowd solution is better than the mean expert solution.
 df = data.frame(crowd_x, crowd_y)
@@ -73,7 +73,7 @@ y = df$crowd_y
 n = length(y)
 x = df$crowd_x
 s = smooth.spline(x, y, spar=0.5)
-xy = predict(s, seq(min(x), max(x), by=0.01))   # Some vertices on the curve
+xy = predict(s, seq(min(x), max(x), by=0.01))   # Some vertice on the curve
 m = length(xy$x)                         
 x.poly = c(xy$x, xy$x[m], xy$x[1])              # Adjoin two x-coordinates
 y.poly = c(xy$y, 0, 0)                          # ...and the corresponding y-coordinates
@@ -85,17 +85,16 @@ lines(crowd_x, crowd_y,
 
 
 # Plot mean of crowd distribution.
-abline(v=crowd_mean, lty=4, lwd=2, col=pal[5])
+abline(v=crowd_mean, lty=4, lwd=4, col=pal[5])
 
 # Plot mean of expert distribution.
-abline(v=expert_mean, lty=6, lwd=2, col=pal[4])
+abline(v=expert_mean, lty=6, lwd=4, col=pal[4])
 
 # Plot right tail of crowd distribution.
-abline(v=1.5, lty=3, lwd=2, col=pal[3])
-
+abline(v=1.5, lty=3, lwd=4, col=pal[3])
 
 # Legend
-legend("topleft", inset=0.01, lwd=2,
+legend("topleft", inset=0, lwd=3,
        legend=c(
          'Crowd distribution',
          'Expert distribution',
@@ -104,7 +103,7 @@ legend("topleft", inset=0.01, lwd=2,
          'Right tail of crowd distribution'),
        col=c(pal[1], pal[2], pal[5], pal[4], pal[3]),
        lty=c(2, 1, 4, 6, 3), 
-       cex=1, box.lty=0, seg.len=4)
+       cex=1.2, box.lty=0, seg.len=3)
 
 # Device off.
 if(WRITE_PNG == TRUE){
