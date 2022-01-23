@@ -91,45 +91,51 @@ if(WRITE_PNG == TRUE){
 }
 
 # Remove title whitespace.
-par(mar=c(5,4,1,2)+0.1)
+par(mar=c(5,5,1,0.5)+0.1)
 
 # Plot.
 plot(tresholds, discarded_correct_bad_counts, type='l', xaxt='n',
-     ylab='Number of predictions below the threshold', xlab='Confidence threshold',
-     col=pal[2], log="y", lwd=3, las=1)
+     ann = FALSE, col=pal[2], log="y", lwd=4, las=1, cex.axis=1.2)
 
 # Axis with custom ticks so that we can include a tick for the confidence threshold.
-axis(side=1, at=c(0, 0.2, 0.4, 0.48,0.6, 0.8, 1.0))
+axis(side=1, at=c(0, 0.2, 0.4, 0.48,0.6, 0.8, 1.0), cex.axis=1.2)
 
+# Y-Axis label
+title(ylab='Predictions below the threshold',
+      line=3.5, cex.lab=1.5)
 
-lines(tresholds, discarded_correct_earth_counts, col=pal[1], lwd=3)
-lines(tresholds, discarded_correct_edge_counts, col=pal[3], lwd=3)
+# X-Axis label
+title(xlab='Confidence threshold',
+      line=3.5, cex.lab=1.5)
 
-lines(tresholds, discarded_incorrect_bad_counts, col=pal[2], lty=4, lwd=3)
-lines(tresholds, discarded_incorrect_earth_counts, col=pal[1], lty=4, lwd=3)
-lines(tresholds, discarded_incorrect_edge_counts, col=pal[3], lty=4, lwd=3)
+lines(tresholds, discarded_correct_earth_counts, col=pal[1], lwd=4)
+lines(tresholds, discarded_correct_edge_counts, col=pal[3], lwd=4)
+
+lines(tresholds, discarded_incorrect_bad_counts, col=pal[2], lty=4, lwd=4)
+lines(tresholds, discarded_incorrect_earth_counts, col=pal[1], lty=4, lwd=4)
+lines(tresholds, discarded_incorrect_edge_counts, col=pal[3], lty=4, lwd=4)
 
 # Ideal confidence threshold line for given test set.
-abline(v=0.48, lty=3, lwd=2, col='azure4')
+abline(v=0.48, lty=3, lwd=5, col='azure4')
 
 # Legend box.
-rect(-0.03, 55, 0.17, 1000, col='white')
+rect(-0.03, 51, 0.19, 1000, col='white')
 
 # Legend title
-text(0.072, 680, 'Images Classified', cex=1)
+text(0.08, 680, 'Images Classified', cex=1.5)
 
 # Legend for correctly labeled images that are discarded.
-legend(-0.027, 550, inset=0.01, lwd=2, title='Correctly',
+legend(-0.027, 550, inset=0.01, lwd=3, title='Correctly',
        legend=c('Bad', 'Earth', 'Edge'),
        col=c(pal[2], pal[1], pal[3]),
-       lty=1, cex=1, box.lty=0, seg.len=2)
+       lty=1, cex=1.2, box.lty=0, seg.len=2)
 
 
 # Legend for incorrectly labeled images that are discarded.
-legend(0.07, 550, inset=0.01, lwd=2, title='Incorrectly',
+legend(0.07, 550, inset=0.01, lwd=3, title='Incorrectly',
        legend=c('Bad', 'Earth', 'Edge'),
        col=c(pal[2], pal[1], pal[3]),
-       lty=4, cex=1, box.lty=0, seg.len=2)
+       lty=4, cex=1.2, box.lty=0, seg.len=2)
 
 # Device off.
 if(WRITE_PNG == TRUE){
