@@ -1,7 +1,7 @@
 ![OPS-SAT SmartCam Logo](https://raw.githubusercontent.com/georgeslabreche/opssat-smartcam/main/docs/ops-sat_smartcam_logo_transparentbg.png?raw=true)
 
 # Background
-The SmartCam software on the [OPS-SAT](https://www.esa.int/Enabling_Support/Operations/OPS-SAT_your_flying_laboratory) spacecraft is the first use of Artificial Intelligence (AI) by the European Space Agency (ESA) for autonomous planning and scheduling on-board a flying mission. The software's geospatial capability autonomously triggers image acquisitions when the spacecraft is above areas of interest. Inferences from on-board Machine Learning (ML) models classify the captured pictures for downlink prioritization. This is made possible by the spacecraft's powerful processors, capable of running open-source software originally developed for terrestrial systems. Notably, with the [GEOS Geometry Engine](https://trac.osgeo.org/geos/) for geospatial computations and the [TensorFlow Lite](https://www.tensorflow.org/lite) framework for ML model inferences. Additional image classification can be enabled with unsupervised learning using [k-means clustering](https://github.com/georgeslabreche/kmeans-image-clustering/tree/opssat). These features provide new perspectives on how space operations can be designed for future missions given greater in-orbit compute capabilities.
+The SmartCam software on the [OPS-SAT](https://www.esa.int/Enabling_Support/Operations/OPS-SAT_your_flying_laboratory) spacecraft is the first use of Artificial Intelligence (AI) by the European Space Agency (ESA) for autonomous planning and scheduling on-board a flying mission. The software's geospatial capability autonomously triggers image acquisitions when the spacecraft is above areas of interest. Inferences from on-board Machine Learning (ML) models classify the captured pictures for downlink prioritization. This is made possible by the spacecraft's powerful processors, capable of running open-source software originally developed for terrestrial systems. Notably, with the [GEOS Geometry Engine](https://libgeos.org/) for geospatial computations and the [TensorFlow Lite](https://www.tensorflow.org/lite) framework for ML model inferences. Additional image classification can be enabled with unsupervised learning using [k-means clustering](https://github.com/georgeslabreche/kmeans-image-clustering/tree/opssat). These features provide new perspectives on how space operations can be designed for future missions given greater in-orbit compute capabilities.
 
 The SmartCam's image classification pipeline is made "openable" by allowing it to be constructed from crowdsourced trained ML models. These third-party models can be uplinked to the spacecraft and chained into a sequence with configurable branching rules for hyper-specialized classification and subclassification through an autonomous decision-making tree. This mechanism enables open innovation methods to extend on-board ML beyond its original mission requirement while stimulating knowledge transfer from established AI communities into space applications. The use of an industry standard ML framework de-risks and accelerate developing AI for future missions by broadening OPS-SAT's accessibility to AI experimenters established outside of the space sector.
 
@@ -12,7 +12,7 @@ We appreciate citations if you reference this work in our upcoming scientific pu
 Labrèche, G., Evans, D., Marszk, D., Mladenov, T., Shiradhonkar, V., Soto, T., & Zelenevskiy, V. (2022). OPS-SAT Spacecraft Autonomy with TensorFlow Lite, Unsupervised Learning, and Online Machine Learning. _2022 IEEE Aerospace Conference._
 
 ## BibTex
-```
+```bibtex
 @article{LabrecheIEEEAeroconf2022,
   title={OPS-SAT Spacecraft Autonomy with TensorFlow Lite, Unsupervised Learning, and Online Machine Learning},
   author={Georges Labrèche and David Evans and Dominik Marszk and Tom Mladenov and Vasundhara Shiradhonkar and Tanguy Soto and Vladimir Zelenevskiy},
@@ -34,7 +34,7 @@ The app can use any .tflite neural network image classification model file train
 ## 1.1. Inference
 The default model's labels are "earth", "edge", and "bad". The SmartCam's image classification program [uses the TensorFlow Lite C API for model inference](https://github.com/georgeslabreche/tensorflow-opssat-smartcam). Tensorflow Lite inference is thus available to any experimenter without being restricted to image classification.
 
-### 1.2. Training New Models
+## 1.2. Training New Models
 Scripts and instructions to train new models are available [here](https://github.com/georgeslabreche/opssat-smartcam/tree/main/train).
 
 ## 2. Contribute
@@ -44,8 +44,10 @@ Ways to contribute:
 - OPS-SAT is your flying laboratory: come up with your own experiment that is unrelated to the SmartCam app or the AI framework that powers it.
 
 Join the [OPS-SAT community platform](https://opssat1.esoc.esa.int/) and apply to become an experimenter, it's quick and easy! 
+
 ## 3. How It Works
 The app is designed to run on the Satellite Experimental Processing Platform (SEPP) payload onboard the OPS-SAT spacecraft. The SEPP is a powerful ALTERA Cyclone V with a 800 MHz CPU clock and 1GB DDR3 RAM. 
+
 ### 3.1. Overview
 The SmartCam's app configuration is set in the config.ini file. The gist of the application's logic is as follow:
 
@@ -59,17 +61,60 @@ The SmartCam's app configuration is set in the config.ini file. The gist of the 
 8. Subclassify the labeled images into cluster folders via k-means clustering (or train the clustering model if not enough training images have been collected yet).
 9. Repeat steps 1 through 8 until the image acquisition loop as gone through the number of iterations set by *gen_number* in config.ini.
 
+For certain operations the app invokes external executable binaries that are packaged with the app. The are included in [this bin folder](https://github.com/georgeslabreche/opssat-smartcam/tree/issue_13_mock_image_acquisition/home/exp1000/bin). Their source codes are hosted in separate repositories:
+- [Image resizing](https://github.com/georgeslabreche/image-resizer).
+- [TensorFlow inference](https://github.com/georgeslabreche/tensorflow-opssat-smartcam).
+- [K-means image clustering and image segmentation (feature extraction)](https://github.com/georgeslabreche/kmeans-image-clustering).
+
 ### 3.2. Installation
-#### 3.2.1. Dependencies
-The SEPP runs the Ångström distribution of Linux. The following packages are dependencies that need to be installed in SEPP's Linux operating system prior to installing and running the SmartCam app:
+The app can run on a local development environment (64-bit) as well as onboard the spacecraft's SEPP processor (ARM 32-bit). For the former, the app reads its configuration parameters from the *config.dev.ini" file whereas for the latter it reads them from the *config.ini* file. 
+
+#### 3.2.1. Local Development Environment
+These instruction are written for Ubuntu and were tested on Ubuntu 18.04 LTS. Install development tools:
+```bash
+sudo apt install python3-dev
+sudo apt install virtualenv
+```
+
+Create the symbolic links for the TensorFlow Lite shared objects. Execute the following bash script from the project's home directory:
+```bash
+./scripts/create_local_dev_symlinks.sh
+```
+
+Install a Python virtual environment and the Python package dependencies. From the project's home directory:
+```bash
+cd home/exp1000/
+virtualenv -p python3 venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+Edit the *smartcam.py* file to enable debug mode and indicate that the app must execute binaries compiled for the 64-bit local dev environment. These binaries were built with the k8 architecture. Enabling debug mode simply generates mock data (e.g. acquired pictures) in the absence of spacecraft hardware (e.g. the onboard camera).
+```python
+DEBUG = True
+DEBUG_ARCH = 'k8'
+```
+
+Before running the app make sure that the virutal environment is still active. If it isn't then re-execute `source venv/bin/activate`. Run the app:
+```bash
+python3 smartcam.py
+```
+
+#### 3.2.2. Onboard the Spacecraft
+The SmarCam app and its dependencies are packaged for deployment as opkg ipk files, ready to be installed in the SEPP via the `opkg install` command.
+
+##### 3.2.2.1. Dependencies
+The SEPP runs the Ångström distribution of Linux. The following packages are dependencies that need to be installed in SEPP's Linux operating system prior to installing and running the app. They can be found in the `deps` directory of this repository:
 - **ephem 3.7.6.0:** Python package for high-precision astronomy computations. 
 - **Shapely 1.7.0:** Python package for manipulation and analysis of planar geometric objects. 
 - **libgeos 3.5.1:** Geometry engine for Geographic Information Systems - C++ Library.
 - **libgeos-c 1.9.1:** Geometry engine for Geographic Information Systems - C Library.
 
-These dependencies have been packaged into opkg ipk files, ready to be installed in the SEPP via the `opkg install` command. They can be found in the `deps` directory of this repository.
-#### 3.2.2. The App
+Other dependencies are the *tar* and *split* programs that are invoked by the App.
+
+##### 3.2.2.2. The App
 The SmartCam app has also been packaged for installation via opkg. The ipk files for tagged releases are available in the Tags section of this repository.
+
 
 ### 3.3. Building an Image Classification Pipeline
 1. Each model consists of a .tflite and a labels.txt file located in a model folder under `/home/exp1000/models`, e.g: `/home/exp1000/models/default` and `/home/exp1000/models/cloud_detection`.
@@ -119,7 +164,6 @@ There are two types of image acquisition that can beet set: Polling or Area-of-I
 - *png_keep* - flag if the png image file should be kept.
 - *jpeg_scaling* - scaling factor applied on the png file when generating the jpeg thumbnail.
 - *jpeg_quality* - png to jpeg conversion quality level.
-- *jpeg_processing* - image processing to apply when generating jpeg thumbnail (none, pnmnorm, or pnmhisteq).
 
 ### 4.4. Model
 - *tflite_model* - path of the TensorFlow Lite neural network mode file.
