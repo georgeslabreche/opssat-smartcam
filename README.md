@@ -166,6 +166,7 @@ There are two types of image acquisition that can beet set: Polling or Area-of-I
 - *jpeg_quality* - png to jpeg conversion quality level.
 
 ### 4.4. Model
+#### 4.4.1. TF Lite
 - *tflite_model* - path of the TensorFlow Lite neural network mode file.
 - *labels* - path of the labels text file.
 - *labels_keep* - only downlink images that are classified with these labels.
@@ -174,6 +175,20 @@ There are two types of image acquisition that can beet set: Polling or Area-of-I
 - *input_mean* - mean of the image input.
 - *input_std* - standard deviation of the image input.
 - *confidence_threshold* - minimum confidence level required to apply the label predicted by the neural network model.
+
+#### 4.4.2. Executable Binary
+- *bin_model* - path of the executable program that will process the given image.
+- *labels* - path of the labels text file.
+- *labels_keep* - only downlink images that are classified with these labels.
+- *input_format* - the format of the image input (ims_rgg, png, or jpeg).
+- *write_mode* - the write mode of the output image (optional).
+  - 0: do not write a new image.
+  - 1: write a new image as a new file.
+  - 2: write a new image that overwrites the input image file.
+  - 3: same as option 2 but backs up the original input image.
+- *args* - additional arguments specific to the executable binary.
+- *confidence_threshold* - minimum confidence level required to apply the label predicted by the neural network model.
+
 
 ### 4.5. Clustering
 - *cluster* - flag to enable or disable image clustering with k-means.
