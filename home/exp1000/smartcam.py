@@ -97,8 +97,12 @@ METADATA_CSV_FILE = LOG_PATH + '/opssat_smartcam_metadata_{D}.csv'.format(D=STAR
 # Image filename prefix.
 IMG_FILENAME_PREFIX = "img_msec_"
 
-# Image generation type: AOI.
+# Default image generation type: AOI.
 GEN_TYPE_AOI = 'aoi'
+
+# The different model types that can be plugged into the classification pipeline
+MODEL_TYPE_TF_LITE = 0
+MODEL_TYPE_EXEC_BIN = 1
 
 # The logger.
 logger = None
@@ -161,6 +165,43 @@ class AppConfig:
         self.max_error_count = self.config.getint('conf', 'max_error_count')
 
 
+    def __init_model_tflite_props(self, model_name):
+        """Fetch TensorFlow Lite model configuration parameters."""
+
+        # Get the config section name for the current model.
+        model_cfg_section_name = 'model_' + model_name
+
+        # Fetch the model configuration properties.
+        self.tflite_model = self.config.get(model_cfg_section_name, model_name + '.tflite_model')
+        self.file_labels = self.config.get(model_cfg_section_name, model_name + '.labels')
+        self.labels_keep = json.loads(self.config.get(model_cfg_section_name, model_name + '.labels_keep'))
+        self.input_height = self.config.get(model_cfg_section_name, model_name + '.input_height')
+        self.input_width = self.config.get(model_cfg_section_name, model_name + '.input_width')
+        self.input_mean = self.config.get(model_cfg_section_name, model_name + '.input_mean')
+        self.input_std = self.config.get(model_cfg_section_name, model_name + '.input_std')
+        self.confidence_threshold = self.config.get(model_cfg_section_name, model_name + '.confidence_threshold')
+
+        return True
+
+
+    def __init_model_bin_props(self, model_name):
+        """Fetch executable binary's configuration parameters."""
+
+        # Get the config section name for the current model.
+        model_cfg_section_name = 'model_' + model_name
+
+        # Fetch the model configuration properties.
+        self.bin_model = self.config.get(model_cfg_section_name, model_name + '.bin_model')
+        self.file_labels = self.config.get(model_cfg_section_name, model_name + '.labels')
+        self.labels_keep = json.loads(self.config.get(model_cfg_section_name, model_name + '.labels_keep'))
+        self.input_format = self.config.get(model_cfg_section_name, model_name + '.input_format')
+        self.write_mode = self.config.get(model_cfg_section_name, model_name + '.write_mode')
+        self.args = self.config.get(model_cfg_section_name, model_name + '.args')
+        self.confidence_threshold = self.config.get(model_cfg_section_name, model_name + '.confidence_threshold')
+
+        return True
+
+
     def init_model_props(self, model_name):
         """Fetch model configuration parameters."""
 
@@ -169,19 +210,18 @@ class AppConfig:
 
         # Check that the model section exists in the configuration file before proceeding.
         if self.config.has_section(model_cfg_section_name) is False:
-            return False
+            return False, -1
 
-        # Fetch the model configuration properties.
-        self.tflite_model = self.config.get(model_cfg_section_name, 'tflite_model')
-        self.file_labels = self.config.get(model_cfg_section_name, 'labels')
-        self.labels_keep = json.loads(self.config.get(model_cfg_section_name, 'labels_keep'))
-        self.input_height = self.config.get(model_cfg_section_name, 'input_height')
-        self.input_width = self.config.get(model_cfg_section_name, 'input_width')
-        self.input_mean = self.config.get(model_cfg_section_name, 'input_mean')
-        self.input_std = self.config.get(model_cfg_section_name, 'input_std')
-        self.confidence_threshold = self.config.get(model_cfg_section_name, 'confidence_threshold')
+        # Check if model is a TF Lite model or an executable binary model.
+        # Parse config properties accordingly.
+        if self.config.has_option(model_cfg_section_name, model_name + '.tflite_model'):
+            return self.__init_model_tflite_props(model_name), MODEL_TYPE_TF_LITE
 
-        return True
+        elif self.config.has_option(model_cfg_section_name, model_name + '.bin_model'):
+            return self.__init_model_bin_props(model_name), MODEL_TYPE_EXEC_BIN
+
+        else:
+            return False, -1
 
 
     def init_compression_fapec_props(self):
@@ -987,7 +1027,7 @@ class ImageEditor:
 
 class ImageClassifier:
     
-    def label_image(self, image_filename, model_tflite_filename, labels_filename, image_height, image_width, image_mean, image_std):
+    def label_image_with_tf_model(self, image_filename, model_tflite_filename, labels_filename, image_height, image_width, image_mean, image_std):
         """Label an image using the image classifier with the given model and labels files."""
 
         try:
@@ -1022,13 +1062,61 @@ class ImageClassifier:
             
             else: 
                 # Log error code if image classification program returned and error code.
-                logger.error("The image classification program returned error code {E}. {M}".format(E=str(return_code), M=stderr.decode('utf-8').split()))
+                logger.error("The image classification program returned error code {E}. {M}".format(E=str(return_code), M=stderr.decode('utf-8').strip()))
 
         except:
             # Log the exception.
             logger.exception("An error was thrown while attempting to run the image classification program.")
 
         return None
+
+
+    def label_image_with_exec_bin(self, image_filename, model_exec_bin_filename, metadata_filename, write_mode, args):
+
+        try:
+            # Build the command.
+            # It's a list because it will used as an argument for subprocess.Popen().
+            cmd = [model_exec_bin_filename,\
+                '-i', image_filename,\
+                '-m', metadata_filename,\
+                '-w', write_mode,
+                args]
+
+            # Log the command that will be executed.
+            logger.info("Running command for executable binary: {C}".format(C=' '.join(cmd)))
+
+            # Create a subprocess to execute the image classification program.
+            # Measure the execution time.
+            p = subprocess.Popen(['time', '-f%e'] + cmd,
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+            (stdout, stderr) = p.communicate()
+            p_status = p.wait()
+
+            # Log stderr, it's the output of the time command.
+            logger.info("Binary execution time: {} seconds.".format(stderr.decode('utf-8').strip()))
+
+            # Check return code to determine if there was a program execution error or not.
+            return_code = p.returncode 
+
+            # Get program return code.
+            if return_code == 0:
+                # Log results.
+                logger.info("Classification results: " + stdout.decode('utf-8').strip())
+
+                # The program's stdout is prediction result as a JSON object string.
+                return json.loads(stdout.decode('utf-8'))
+            
+            else: 
+                # Log error code if the executable binary returned and error code.
+                logger.error("The executable binary returned error code {E}. {M}".format(E=str(return_code), M=stderr.decode('utf-8').strip()))
+
+        except:
+            # Log the exception.
+            logger.exception("An error was thrown while attempting to run the image classification program.")
+
+        return None
+
 
     
     def cluster_labeled_images(self, cluster_for_labels, k, training_data_size_threshold, image_types_to_cluster):
@@ -1458,8 +1546,8 @@ def run_experiment():
                         # Assuming the image will not be kept until we get the final result from the last model in the pipeline.
                         keep_image = False
 
-                        # Init the model configuration properties for the current modell
-                        success = cfg.init_model_props(next_model)
+                        # Init the model configuration properties for the current model.
+                        success, model_type = cfg.init_model_props(next_model)
 
                         # Check that the model section exists in the configuration file before proceeding.
                         if not success:
@@ -1470,20 +1558,50 @@ def run_experiment():
                             # Logging which model in the pipeline is being used to classify the image
                             logger.info("Labeling the image using the '{M}' model.".format(M=next_model))
 
-                        # File name of the image file that will be used as the input image to feed the image classification model.
-                        file_image_input = file_png.replace(".png", "_input.jpeg")
+                        
+                        # Determine image input that will be fed into the model.
+                        file_image_input = None
 
-                        # Create the image that will be used as the input for the neural network image classification model.
-                        # Downsample it from the thumbnail image that was previously created.
-                        success = img_editor.create_input_image(file_thumbnail, file_image_input, cfg.input_height, cfg.input_width, cfg.jpeg_quality)
+                        if model_type == MODEL_TYPE_TF_LITE:
+                            # File name of the image file that will be used as the input image to feed the image classification model.
+                            file_image_input = file_png.replace(".png", "_input.jpeg")
+
+                            # Create the image that will be used as the input for the neural network image classification model.
+                            # Downsample it from the thumbnail image that was previously created.
+                            success = img_editor.create_input_image(file_thumbnail, file_image_input, cfg.input_height, cfg.input_width, cfg.jpeg_quality)
+
+                        elif model_type == MODEL_TYPE_EXEC_BIN:
+                            if cfg.input_format == "ims_rgb":
+                                file_image_input = file_png.replace(".png", ".ims_rgb")
+
+                            elif cfg.input_format == "png":
+                                file_image_input = file_png
+
+                            elif cfg.input_format == "jpeg":
+                                file_image_input = file_thumbnail
+                                
+                            # Flag if image input was successfully set.
+                            if file_image_input is not None:
+                                success = True
+                            
+                        else:
+                            success = False
 
                         # Input image for the model was successfully created, proceed with running the image classification program.
                         if success:
-                            # Label the image.
-                            predictions_dict = img_classifier.label_image(\
-                                file_image_input, cfg.tflite_model, cfg.file_labels,\
-                                cfg.input_height, cfg.input_width, cfg.input_mean, cfg.input_std)
 
+                            # Label the image with predictions
+                            predictions_dict = None
+
+                            if model_type == MODEL_TYPE_TF_LITE:
+                                predictions_dict = img_classifier.label_image_with_tf_model(\
+                                    file_image_input, cfg.tflite_model, cfg.file_labels,\
+                                    cfg.input_height, cfg.input_width, cfg.input_mean, cfg.input_std)
+
+                            elif model_type == MODEL_TYPE_EXEC_BIN:
+                                predictions_dict = img_classifier.label_image_with_exec_bin(\
+                                    file_image_input, cfg.bin_model, METADATA_CSV_FILE, cfg.write_mode, cfg.args)
+                            
                             # Break out of the loop if the image classification program returns an error.
                             if predictions_dict is None:
 
