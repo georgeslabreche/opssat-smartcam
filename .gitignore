@@ -1,9 +1,14 @@
+venv
+home/exp1000/mocks/filestore/toGround/*.tar.gz
+home/exp1000/kmeans
+__pycache__
 .vscode
 .stop
 *.ims_rgb
 *.png
 *.jpeg
 *.jpg
+!home/exp1000/mocks/pictures/*.png
 !docs/*.png
 !docs/*.jpg
 !pub/Rscripts/plots/*.png
