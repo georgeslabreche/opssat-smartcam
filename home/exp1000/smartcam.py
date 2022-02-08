@@ -28,8 +28,8 @@ EXP_ID = 1000
 SPACECRAFT_ARCH = 'armhf'
 
 # Debug settings
-DEBUG = False
-DEBUG_ARCH = 'armhf' # 'armhf' for the spacecraft and 'k8' for AMD K8 for local dev.
+DEBUG = True
+DEBUG_ARCH = 'k8' # 'armhf' for the spacecraft and 'k8' for AMD K8 for local dev.
 DEBUG_BASE_PATH = os.getcwd()
 
 # The experiment's base path.
@@ -754,7 +754,7 @@ class Utils:
             os.makedirs(toGround_label_dir)
         
         # Create the command to move the images to the experiment's toGround's label folder
-        cmd_move_images = 'mv *.png *.ims_rgb *_thumbnail.jpeg {G}/'.format(G=toGround_label_dir)
+        cmd_move_images = 'mv *.png *.ims_rgb *.jpeg {G}/'.format(G=toGround_label_dir)
 
         # Move the image to the experiment's toGround folder.
         os.system(cmd_move_images)
@@ -1071,16 +1071,14 @@ class ImageClassifier:
         return None
 
 
-    def label_image_with_exec_bin(self, image_filename, model_exec_bin_filename, metadata_filename, write_mode, args):
+    def label_image_with_exec_bin(self, image_filename, model_exec_bin_filename, write_mode, args):
 
         try:
             # Build the command.
             # It's a list because it will used as an argument for subprocess.Popen().
             cmd = [model_exec_bin_filename,\
                 '-i', image_filename,\
-                '-m', metadata_filename,\
-                '-w', write_mode,
-                args]
+                '-w', write_mode] + args.split()
 
             # Log the command that will be executed.
             logger.info("Running command for executable binary: {C}".format(C=' '.join(cmd)))
@@ -1600,8 +1598,8 @@ def run_experiment():
 
                             elif model_type == MODEL_TYPE_EXEC_BIN:
                                 predictions_dict = img_classifier.label_image_with_exec_bin(\
-                                    file_image_input, cfg.bin_model, METADATA_CSV_FILE, cfg.write_mode, cfg.args)
-                            
+                                    file_image_input, cfg.bin_model, cfg.write_mode, cfg.args)
+
                             # Break out of the loop if the image classification program returns an error.
                             if predictions_dict is None:
 
