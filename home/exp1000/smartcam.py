@@ -28,8 +28,8 @@ EXP_ID = 1000
 SPACECRAFT_ARCH = 'armhf'
 
 # Debug settings
-DEBUG = True
-DEBUG_ARCH = 'k8' # 'armhf' for the spacecraft and 'k8' for AMD K8 for local dev.
+DEBUG = False
+DEBUG_ARCH = 'k8' # 'armhf' for the ARM32 SEPP on the spacecraft and 'k8' for k8 64-bit for local dev.
 DEBUG_BASE_PATH = os.getcwd()
 
 # The experiment's base path.
