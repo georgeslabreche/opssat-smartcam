@@ -113,7 +113,20 @@ The SEPP runs the Ångström distribution of Linux. The following packages are d
 Other dependencies are the *tar* and *split* programs that are invoked by the App.
 
 ##### 3.2.2.2. The App
-The SmartCam app has also been packaged for installation via opkg. The ipk files for tagged releases are available in the Tags section of this repository.
+- The SmartCam app has also been packaged for installation via opkg.
+- The ipk files for tagged releases are available in the Tags section of this repository.
+- Two tyoes if ipk files can be created: for the Engineering Model (EM) or for the spacecraft.
+- The EM and spacecraft ipk packaging only differd in that the former includes mocking related files (i.e. mock picture files).
+
+Package the app into an ipk for the EM:
+```bash
+./scripts/ipk_create.sh em
+```
+
+Package the app into an ipk for the spacecraft:
+```bash
+./scripts/ipk_create.sh wem
+```
 
 
 ### 3.3. Building an Image Classification Pipeline
