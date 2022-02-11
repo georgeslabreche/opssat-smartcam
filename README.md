@@ -64,7 +64,8 @@ The SmartCam's app configuration is set in the config.ini file. The gist of the 
 For certain operations the app invokes external executable binaries that are packaged with the app. The are included in [this bin folder](https://github.com/georgeslabreche/opssat-smartcam/tree/issue_13_mock_image_acquisition/home/exp1000/bin). Their source codes are hosted in separate repositories:
 - [Image resizing](https://github.com/georgeslabreche/image-resizer).
 - [TensorFlow inference](https://github.com/georgeslabreche/tensorflow-opssat-smartcam).
-- [K-means image clustering and image segmentation (feature extraction)](https://github.com/georgeslabreche/kmeans-image-clustering).
+- [K-means image clustering](https://github.com/georgeslabreche/kmeans-image-clustering).
+- [K-means image segmentation (feature extraction)](https://github.com/georgeslabreche/kmeans-image-segmentation).
 
 ### 3.2. Installation
 The app can run on a local development environment (64-bit) as well as onboard the spacecraft's SEPP processor (ARM 32-bit). For the former, the app reads its configuration parameters from the *config.dev.ini" file whereas for the latter it reads them from the *config.ini* file. 
@@ -125,7 +126,7 @@ Package the app into an ipk for the EM:
 
 Package the app into an ipk for the spacecraft:
 ```bash
-./scripts/ipk_create.sh wem
+./scripts/ipk_create.sh
 ```
 
 
@@ -175,10 +176,33 @@ There are two types of image acquisition that can beet set: Polling or Area-of-I
 ### 4.3. Images
 - *raw_keep* - flag if the raw image file should be kept.
 - *png_keep* - flag if the png image file should be kept.
-- *jpeg_scaling* - scaling factor applied on the png file when generating the jpeg thumbnail.
 - *jpeg_quality* - png to jpeg conversion quality level.
 
 ### 4.4. Model
+
+All model properties in the SmartCam's config file are prefixed by the name of the model. For instance, the config section for the `default` model is `[model_default]` and its properties are `default.tflite_model`, `default.labels`, etc. E.g.:
+
+```ini
+[model_default]
+default.tflite_model                = /home/exp1000/models/default/model.tflite
+default.labels                      = /home/exp1000/models/default/labels.txt
+default.labels_keep                 = ["earth:kmeans_imgseg","edge","bad"]
+default.input_height                = 224
+default.input_width                 = 224
+default.input_mean                  = 0
+default.input_std                   = 255
+default.confidence_threshold        = 0.70
+
+[model_kmeans_imgseg]
+kmeans_imgseg.bin_model             = bin/armhf/kmeans/image_segmentation
+kmeans_imgseg.labels                = models/kmeans_imgseg/labels.txt
+kmeans_imgseg.labels_keep           = ["cloudy_0_25","cloudy_26_50","cloudy_51_75","cloudy_76_100","features"]
+kmeans_imgseg.input_format          = jpeg
+kmeans_imgseg.write_mode            = 1
+kmeans_imgseg.args                  = -k 2 -p BW
+kmeans_imgseg.confidence_threshold  = 0.70
+```
+
 #### 4.4.1. TF Lite
 - *tflite_model* - path of the TensorFlow Lite neural network mode file.
 - *labels* - path of the labels text file.
