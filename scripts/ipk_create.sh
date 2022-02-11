@@ -42,20 +42,25 @@ if [ "$1" == "" ]; then         # If packaging for the spacecraft then remove fi
 elif [ "$1" == "em" ]; then     # If not packaging for for the EM.
     echo "Create IPK for the EM"
     rm -f ${deploy_exp_dir}/mocks/filestore/toGround/.gitignore
+    rm -f ${deploy_exp_dir}/mocks/filestore/toGround/*.tar.gz
 else                            # If not deploying for spacecraft or the EM then an invalid parameter was given.
     echo "Error: invalid option"
     rm -rf ${deploy_dir}
     exit 1
 fi
 
-# Remove files and folders that are not needed on the SEPP for both spacecraft and EM deployments.
+# Remove files that are not needed on the SEPP for both spacecraft and EM deployments.
 rm -f ${deploy_exp_dir}/logs/.gitignore
 rm -f ${deploy_exp_dir}/requirements.txt
 rm -f ${deploy_exp_dir}/bin/armhf/_solib_armhf/.gitignore
+rm -f ${deploy_exp_dir}/toGround/.gitignore
+
+# Remove folders that are not needed on the SEPP for both spacecraft and EM deployments.
+rm -rf ${deploy_exp_dir}/toGround/*
 rm -rf ${deploy_exp_dir}/bin/k8   # Binaries not compiled for the ARM-32 architecture.
 rm -rf ${deploy_exp_dir}/kmeans
 rm -rf ${deploy_exp_dir}/venv
-rm -rf ${deploy_exp_dir}/toGround
+
 rm -rf ${deploy_exp_dir}/mocks/__pycache__
 
 # Create the data tar file.
