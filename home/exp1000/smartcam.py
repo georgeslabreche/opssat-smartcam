@@ -28,8 +28,8 @@ EXP_ID = 1000
 SPACECRAFT_ARCH = 'armhf'
 
 # Debug settings
-DEBUG = True
-DEBUG_ARCH = 'k8' # 'armhf' for the ARM32 SEPP on the spacecraft and 'k8' for k8 64-bit for local dev.
+DEBUG = False
+DEBUG_ARCH = 'armhf' # 'armhf' for the ARM32 SEPP on the spacecraft and 'k8' for k8 64-bit for local dev.
 DEBUG_BASE_PATH = os.getcwd()
 
 # The experiment's base path.
@@ -652,7 +652,7 @@ class Fapec:
         p_status = p.wait()
 
         # Log the execution time
-        logger.info("Fapec compression execution time: {}.".format(stderr.decode('utf-8').strip()))
+        logger.info("Fapec compression execution time:\n{}".format(stderr.decode('utf-8').strip()))
 
 
 class Utils:
@@ -960,7 +960,7 @@ class ImageEditor:
 
         # Log stdout and stderr. The latter is the output of the time command.
         logger.info(stdout.decode('utf-8').strip())
-        logger.info("Resize execution time: {}.".format(stderr.decode('utf-8').strip()))
+        logger.info("Resize execution time:\n{}".format(stderr.decode('utf-8').strip()))
 
         # Check that thumbnail exists.
         if not os.path.isfile(dest_filename):
@@ -1004,7 +1004,7 @@ class ImageEditor:
 
         # Log stdout and stderr. The latter is the output of the time command.
         logger.info(stdout.decode('utf-8').strip())
-        logger.info("Resize execution time: {}.".format(stderr.decode('utf-8').strip()))
+        logger.info("Resize execution time:\n{}".format(stderr.decode('utf-8').strip()))
 
         # Check that the image input exists.
         if not os.path.isfile(dest_filename):
@@ -1047,7 +1047,7 @@ class ImageClassifier:
             p_status = p.wait()
 
             # Log stderr, it's the output of the time command.
-            logger.info("Inference execution time: {}.".format(stderr.decode('utf-8').strip()))
+            logger.info("Inference execution time:\n{}".format(stderr.decode('utf-8').strip()))
 
             # Check return code to determine if there was a program execution error or not.
             return_code = p.returncode 
@@ -1092,7 +1092,7 @@ class ImageClassifier:
             p_status = p.wait()
 
             # Log stderr, it's the output of the time command.
-            logger.info("Binary execution time: {}.".format(stderr.decode('utf-8').strip()))
+            logger.info("Binary execution time:\n{}".format(stderr.decode('utf-8').strip()))
 
             # Check return code to determine if there was a program execution error or not.
             return_code = p.returncode 
@@ -1155,7 +1155,7 @@ class ImageClassifier:
                     p_status = p.wait()
 
                     # Log the execution time
-                    logger.info("K-means execution time: {}.".format(stderr.decode('utf-8').strip()))
+                    logger.info("K-means execution time:\n{}".format(stderr.decode('utf-8').strip()))
 
                     # Get program error code.
                     return_code = p.returncode
@@ -1211,7 +1211,7 @@ class ImageClassifier:
                             p_status = p.wait()
 
                             # Log the execution time
-                            logger.info("K-means execution time: {}.".format(stderr.decode('utf-8').strip()))
+                            logger.info("K-means execution time:\n{}".format(stderr.decode('utf-8').strip()))
 
                             # Get program error code.
                             return_code = p.returncode
@@ -1271,7 +1271,7 @@ class ImageClassifier:
                         p_status = p.wait()
 
                         # Log the execution time
-                        logger.info("K-means execution time: {}.".format(stderr.decode('utf-8').strip()))
+                        logger.info("K-means execution time:\n{}".format(stderr.decode('utf-8').strip()))
 
                         # Get program error code.
                         return_code = p.returncode
