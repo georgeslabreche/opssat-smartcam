@@ -131,16 +131,16 @@ Package the app into an ipk for the spacecraft:
 
 
 ### 3.3. Building an Image Classification Pipeline
-1. Each model consists of labels.txt file and a .tflite model file or an executable program. These failes are located in a model folder under `/home/exp1000/models`, e.g: `/home/exp1000/models/default` and `/home/exp1000/models/cloud_detection`.
-2. If the model is an executable program then it must implement the following input arguments:
+1. Each model consists of labels.txt file and a .tflite model file or an executable program. These files are located in a model folder under `/home/exp1000/models`, e.g: `/home/exp1000/models/default` and `/home/exp1000/models/kmeans_imgseg`.
+2. If the model is an executable binary then it must implement the following input arguments:
     - -i  the file path of the input image
-    - -w  the write mode of the output image
-3. Create a config.ini section for each model. Prefix the section name with `model_`, e.g. `[model_default]` and `[model_cloud_detection]`.
+    - -w  the write mode of the output image (optional)
+3. Create a config.ini section for each model. Prefix the section name with `model_`, e.g. `[model_default]` and `[model_kmeans_imgseg]`.
 4. Each model's config section will specify which label to keep via the *labels_keep* property. For instance, if the default model can label an image as either "earth", "edge", or "bad", but we only want to keep images classified with the first two labels, then `labels_keep = ["earth", "edge"]`.
-5. If another image classification needs to follow up after an image was previously classified with a certain label, then the follow up model name can be appended following a colon. E.g. `["earth:cloud_detection", "edge"]`.
+5. If another image classification needs to follow up after an image was previously classified with a certain label, then the follow up model name can be appended following a colon. E.g. `["earth:kmeans_imgseg", "edge"]`.
 6. The entry point model that will be the first model applied in the image classification pipeline is specified in the config.ini's *entry_point_model* property, e.g. `entry_point_model = default`. 
 
-See the [kmeans-image-segmentation](https://github.com/georgeslabreche/kmeans-image-segmentation) poject as an example of point 2. The executable program is free to implement any other options specific to the program (these can be set via the SmartCam's config file, see [Section 4.4.2](https://github.com/georgeslabreche/opssat-smartcam#442-executable-program)). 
+See the [kmeans-image-segmentation](https://github.com/georgeslabreche/kmeans-image-segmentation) poject as an example of point 2.
 
 ## 4. Configuration
 This section describes the app's configuration parameters in the `config.ini` file.
@@ -181,6 +181,7 @@ There are two types of image acquisition that can beet set: Polling or Area-of-I
 ### 4.3. Images
 - *raw_keep* - flag if the raw image file should be kept.
 - *png_keep* - flag if the png image file should be kept.
+- *jpeg_scaling* - percentage resize/downsampling of the png image to produce the jpeg thumbnail.
 - *jpeg_quality* - png to jpeg conversion quality level.
 
 ### 4.4. Model
@@ -219,7 +220,7 @@ kmeans_imgseg.confidence_threshold  = 0.70
 - *input_std* - standard deviation of the image input.
 - *confidence_threshold* - minimum confidence level required to apply the label predicted by the neural network model.
 
-#### 4.4.2. Executable Program
+#### 4.4.2. Executable Binary
 - *bin_model* - path of the executable program that will process the given image.
 - *labels* - path of the labels text file.
 - *labels_keep* - only downlink images that are classified with these labels.
@@ -229,7 +230,7 @@ kmeans_imgseg.confidence_threshold  = 0.70
   - 1: write a new image as a new file.
   - 2: write a new image that overwrites the input image file.
   - 3: same as option 2 but backs up the original input image.
-- *args* - additional arguments specific to the executable program.
+- *args* - additional arguments specific to the executable binary.
 - *confidence_threshold* - minimum confidence level required to apply the label predicted by the neural network model.
 
 
