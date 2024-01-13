@@ -1,23 +1,50 @@
 ![OPS-SAT SmartCam Logo](https://raw.githubusercontent.com/georgeslabreche/opssat-smartcam/main/docs/ops-sat_smartcam_logo_transparentbg.png?raw=true)
 
-# Background
-The SmartCam software on the [OPS-SAT](https://www.esa.int/Enabling_Support/Operations/OPS-SAT_your_flying_laboratory) spacecraft is the first use of Artificial Intelligence (AI) by the European Space Agency (ESA) for autonomous planning and scheduling on-board a flying mission. The software's geospatial capability autonomously triggers image acquisitions when the spacecraft is above areas of interest. Inferences from on-board Machine Learning (ML) models classify the captured pictures for downlink prioritization. This is made possible by the spacecraft's powerful processors, capable of running open-source software originally developed for terrestrial systems. Notably, with the [GEOS Geometry Engine](https://libgeos.org/) for geospatial computations and the [TensorFlow Lite](https://www.tensorflow.org/lite) framework for ML model inferences. Additional image classification can be enabled with unsupervised learning using [k-means clustering](https://github.com/georgeslabreche/kmeans-image-clustering/tree/opssat). These features provide new perspectives on how space operations can be designed for future missions given greater in-orbit compute capabilities.
+# First in Space!
+**On November 8, 2020**, this project achieved the first use of deep convolutional neural networks (CNN) on-board a spacecraft. Many other firsts followed, here are some highlights:
+- [First in-orbit neural network deployment for on-board AI](https://ieeexplore.ieee.org/document/9843402).
+- [First on-board machine learning for in-orbit training of unsupervised models](https://ieeexplore.ieee.org/document/9843402).
+- [First re-training of an on-board AI model with live in-flight data](https://digitalcommons.usu.edu/smallsat/2022/all2022/65/).
 
-The SmartCam's image classification pipeline is made "openable" by allowing it to be constructed from crowdsourced trained ML models. These third-party models can be uplinked to the spacecraft and chained into a sequence with configurable branching rules for hyper-specialized classification and subclassification through an autonomous decision-making tree. This mechanism enables open innovation methods to extend on-board ML beyond its original mission requirement while stimulating knowledge transfer from established AI communities into space applications. The use of an industry standard ML framework de-risks and accelerate developing AI for future missions by broadening OPS-SAT's accessibility to AI experimenters established outside of the space sector.
+# Background
+The SmartCam software on-board the [OPS-SAT-1](https://www.esa.int/Enabling_Support/Operations/OPS-SAT_your_flying_laboratory) spacecraft is the first use of Artificial Intelligence (AI) by the European Space Agency (ESA) for autonomous planning and scheduling on-board a flying mission. The software's geospatial capability autonomously triggers image acquisitions when the spacecraft is above areas of interest.
+
+Inferences from on-board Machine Learning (ML) models classify the captured pictures for downlink prioritization. This capability is enabled by the spacecraft's powerful processors, which can run open-source software originally developed for terrestrial systems. Notably, with the [GEOS Geometry Engine](https://libgeos.org/) for geospatial computations and the [TensorFlow Lite](https://www.tensorflow.org/lite) framework for ML model inferences. Additional image classification can be enabled with unsupervised learning using [k-means clustering](https://github.com/georgeslabreche/kmeans-image-clustering/tree/opssat). These features provide new perspectives on how space operations can be designed for future missions given greater in-orbit compute capabilities.
+
+The SmartCam's image classification pipeline is designed to be 'open', allowing it to be constructed from crowdsourced, trained ML models. These third-party models can be uplinked to the spacecraft and chained into a sequence with configurable branching rules for hyper-specialized classification and subclassification through an autonomous decision-making tree. This mechanism enables open innovation methods to extend on-board ML beyond its original mission requirement while stimulating knowledge transfer from established AI communities into space applications. The use of an industry standard ML framework de-risks and accelerate developing AI for future missions by broadening OPS-SAT's accessibility to AI experimenters established outside of the space sector.
+
+Third-party executable binaries and scripts can also be injected into the pipeline and needn't be limited to ML and classification operations.
+
+<div align="center">
+  <img src="./docs/esa_ops-sat-1_spacecraft.png" width="400" alt="ESA OPS-SAT-1 Spacecraft">
+  <br/>
+  <strong>Figure 1: The OPS-SAT spacecraft in the clean room with deployed solar arrays (TU Graz).</strong>
+</div>
+
+
+# Background
+The SmartCam software on-board the [OPS-SAT-1](https://www.esa.int/Enabling_Support/Operations/OPS-SAT_your_flying_laboratory) spacecraft is the first use of Artificial Intelligence (AI) by the European Space Agency (ESA) for autonomous planning and scheduling on-board a flying mission. The software's geospatial capability autonomously triggers image acquisitions when the spacecraft is above areas of interest.
+
+Inferences from on-board Machine Learning (ML) models classify the captured pictures for downlink prioritization. This capability is enabled by the spacecraft's powerful processors, which can run open-source software originally developed for terrestrial systems. Notably, with the [GEOS Geometry Engine](https://libgeos.org/) for geospatial computations and the [TensorFlow Lite](https://www.tensorflow.org/lite) framework for ML model inferences. Additional image classification can be enabled with unsupervised learning using [k-means clustering](https://github.com/georgeslabreche/kmeans-image-clustering/tree/opssat). These features provide new perspectives on how space operations can be designed for future missions given greater in-orbit compute capabilities.
+
+The SmartCam's image classification pipeline is designed to be 'open', allowing it to be constructed from crowdsourced, trained ML models. These third-party models can be uplinked to the spacecraft and chained into a sequence with configurable branching rules for hyper-specialized classification and subclassification through an autonomous decision-making tree. This mechanism enables open innovation methods to extend on-board ML beyond its original mission requirement while stimulating knowledge transfer from established AI communities into space applications. The use of an industry standard ML framework de-risks and accelerate developing AI for future missions by broadening OPS-SAT's accessibility to AI experimenters established outside of the space sector.
+
+Third-party executable binaries and scripts can also be injected into the pipeline and needn't be limited to ML and classification operations.
 
 # Citation
 We appreciate citations if you reference this work in our upcoming scientific publication. Thank you!
 
 ## APA
-Labrèche, G., Evans, D., Marszk, D., Mladenov, T., Shiradhonkar, V., Soto, T., & Zelenevskiy, V. (2022). OPS-SAT Spacecraft Autonomy with TensorFlow Lite, Unsupervised Learning, and Online Machine Learning. _2022 IEEE Aerospace Conference._
+Labrèche, G., Evans, D., Marszk, D., Mladenov, T., Shiradhonkar, V., Soto, T., & Zelenevskiy, V. (2022). OPS-SAT Spacecraft Autonomy with TensorFlow Lite, Unsupervised Learning, and Online Machine Learning. _2022 IEEE Aerospace Conference._ [https://doi.org/10.1109/AERO53065.2022.9843402](https://doi.org/10.1109/AERO53065.2022.9843402).
 
 ## BibTex
 ```bibtex
-@article{LabrecheIEEEAeroconf2022,
-  title={OPS-SAT Spacecraft Autonomy with TensorFlow Lite, Unsupervised Learning, and Online Machine Learning},
-  author={Georges Labrèche and David Evans and Dominik Marszk and Tom Mladenov and Vasundhara Shiradhonkar and Tanguy Soto and Vladimir Zelenevskiy},
-  journal={2022 IEEE Aerospace Conference},
-  year={2022}
+@inproceedings{labreche2022_ieee_aeroconf,
+  title         =   {{OPS-SAT Spacecraft Autonomy with TensorFlow Lite, Unsupervised Learning, and Online Machine Learning}},
+  author        =   {Labrèche, Georges and Evans, David and Marszk, Dominik and Mladenov, Tom and Shiradhonkar, Vasundhara and Soto, Tanguy and Zelenevskiy, Vladimir},
+  booktitle     =   {{2022 IEEE Aerospace Conference}},
+  year          =   {2022},
+  doi           =   {10.1109/AERO53065.2022.9843402}
 }
 ```
 
@@ -68,7 +95,7 @@ For certain operations the app invokes external executable binaries that are pac
 - [K-means image segmentation (feature extraction)](https://github.com/georgeslabreche/kmeans-image-segmentation).
 
 ### 3.2. Installation
-The app can run on a local development environment (64-bit) as well as onboard the spacecraft's SEPP processor (ARM 32-bit). For the former, the app reads its configuration parameters from the *config.dev.ini" file whereas for the latter it reads them from the *config.ini* file. 
+The app can run on a local development environment (64-bit) as well as onboard the spacecraft's SEPP processor (ARM 32-bit). For the former, the app reads its configuration parameters from the *config.dev.ini* file whereas for the latter it reads them from the *config.ini* file. 
 
 #### 3.2.1. Local Development Environment
 These instruction are written for Ubuntu and were tested on Ubuntu 18.04 LTS. Install development tools:
@@ -116,8 +143,8 @@ Other dependencies are the *tar* and *split* programs that are invoked by the Ap
 ##### 3.2.2.2. The App
 - The SmartCam app has also been packaged for installation via opkg.
 - The ipk files for tagged releases are available in the Tags section of this repository.
-- Two tyoes if ipk files can be created: for the Engineering Model (EM) or for the spacecraft.
-- The EM and spacecraft ipk packaging only differd in that the former includes mocking related files (i.e. mock picture files).
+- Two types if ipk files can be created: for the Engineering Model (EM) or for the spacecraft.
+- The EM and spacecraft ipk packaging only differ in that the former includes mocking related files (i.e. mock picture files).
 
 Package the app into an ipk for the EM:
 ```bash
@@ -169,7 +196,7 @@ There are two types of image acquisition that can beet set: Polling or Area-of-I
 
 #### 4.2.2. Camera Settings
 - *cam_exposure* - exposure value (in milliseconds).
-- *cam_gains* - rgb gains (e.g. [8, 8, 8]).
+- *cam_gains* - rgb gains (e.g. [13, 7, 8]).
 
 #### 4.2.3. Acquisition Type
 - *gen_type* - can be either `aoi` or `poll` for "area-of-interest" or "polling", respectively.
@@ -228,7 +255,7 @@ A note on what *input_mean* and *input_std* are for, taken verbatim from [this b
 - *bin_model* - path of the executable program that will process the given image.
 - *labels* - path of the labels text file.
 - *labels_keep* - only downlink images that are classified with these labels.
-- *input_format* - the format of the image input (ims_rgg, png, or jpeg).
+- *input_format* - the format of the image input (ims_rgb, png, or jpeg).
 - *write_mode* - the write mode of the output image (optional).
   - 0: do not write a new image.
   - 1: write a new image as a new file.
@@ -282,4 +309,8 @@ A CSV file is created and downlinked when *collect_metadata* is set to `yes`. Ea
 - *tle_ref_line2* - line 2 of the reference TLE.
 
 
-![OPS-SAT Mission Patch](https://raw.githubusercontent.com/georgeslabreche/opssat-smartcam/main/docs/ops-sat_mission_patch.png?raw=true)
+<div align="center">
+  <img src="./docs/ops-sat_mission_patch.png" height="250" alt="ESA OPS-SAT-1 Mission Patch"/>
+  <br/>
+  <img src="./docs/esa_logo.png" height="250" alt="European Space Agency"/>
+</div>
