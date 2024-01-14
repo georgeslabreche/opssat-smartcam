@@ -21,7 +21,6 @@ Third-party executable binaries and scripts can also be injected into the pipeli
   <strong>Figure 1: The OPS-SAT spacecraft in the clean room with deployed solar arrays (TU Graz).</strong>
 </div>
 
-
 # Background
 The SmartCam software on-board the [OPS-SAT-1](https://www.esa.int/Enabling_Support/Operations/OPS-SAT_your_flying_laboratory) spacecraft is the first use of Artificial Intelligence (AI) by the European Space Agency (ESA) for autonomous planning and scheduling on-board a flying mission. The software's geospatial capability autonomously triggers image acquisitions when the spacecraft is above areas of interest.
 
